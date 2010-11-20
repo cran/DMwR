@@ -1,0 +1,20 @@
+Package: DMwR
+Type: Package
+Title: Functions and data for "Data Mining with R"
+Version: 0.1.0
+Depends: R(>= 2.5), methods, graphics, xts (>= 0.6-7), quantmod (>=
+        0.3-8), ROCR (>= 1.0-2), class (>= 7.3-1), rpart (>= 3.1-46),
+        abind (>= 1.1-0), cluster (>= 1.12.1), lattice (>= 0.18-3),
+        grid (>= 2.10.1), zoo (>= 1.6-4)
+Date: 2010-11-20
+Author: Luis Torgo
+Maintainer: Luis Torgo <ltorgo@dcc.fc.up.pt>
+Description: This package includes functions and data accompanying the
+        book "Data Mining with R, learning with case studies" by Luis
+        Torgo, CRC Press 2010.
+License: GPL (>= 2)
+LazyLoad: yes
+LazyData: yes
+Packaged: 2010-11-26 15:13:46 UTC; ltorgo
+Repository: CRAN
+Date/Publication: 2010-11-26 16:36:47
