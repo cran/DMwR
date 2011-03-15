@@ -767,6 +767,15 @@ join <- function(...,by='datasets') {
   r
 }
 
+# =====================================================
+# Small auxiliary functions to obtain information from 
+# compExp objects.
+# =====================================================
+# Luis Torgo, Mar 2011
+# =====================================================
+dsNames      <- function(res) dimnames(res@foldResults)[[4]]
+learnerNames <- function(res) dimnames(res@foldResults)[[3]]
+statNames    <- function(res) dimnames(res@foldResults)[[2]]
 
 
 #################################################################

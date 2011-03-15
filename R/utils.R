@@ -38,11 +38,13 @@ resp <- function(formula,data) model.response(model.frame(formula, data))
 # "Large" can be defined either as a proportion of the
 # number of columns or as the number in itself.
 # =====================================================
-# Luis Torgo, Mar 2009
+# Luis Torgo, Mar 2009, Mar 2011
 # =====================================================
 manyNAs <- function(data,nORp=0.2) {
   if (nORp < 1) n <- as.integer(nORp*ncol(data))
-  which(apply(data,1,function(x) sum(is.na(x))) > n)
+  idxs <- which(apply(data,1,function(x) sum(is.na(x))) > n)
+  if (!length(idxs)) warning('Empty index generated, no rows with many NAs. Undesirable effects may be caused if indexing a data frame with this.')
+  idxs
 }
 
 

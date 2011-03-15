@@ -41,6 +41,7 @@ export(
        variants, getVariant,
        slidingWindowTest, growingWindowTest,
        join,
+       dsNames, learnerNames, statNames,
        
        # kNN.R file
        kNN,
@@ -53,6 +54,9 @@ export(
        
        # smote.R file
        SMOTE,
+
+       # LOF.R file
+       lofactor,
        
        # trading.R file
        trading.simulator,

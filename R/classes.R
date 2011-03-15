@@ -972,18 +972,23 @@ setMethod("subset",
                    dss=1:dim(x@foldResults)[4])
           {
             rr <- x
-            if (!identical(vars,1:dim(x@foldResults)[3]))
+            if (!identical(vars,1:dim(x@foldResults)[3])) {
+              if (is.character(vars) && length(vars) == 1)
+                vars <- grep(vars,names(rr@learners))
               rr@learners <- rr@learners[vars]
-            if (!identical(dss,1:dim(x@foldResults)[4]))
+            }
+            if (!identical(dss,1:dim(x@foldResults)[4])) {
+              if (is.character(dss) && length(dss) == 1)
+                dss <- grep(dss,dimnames(rr@foldResults)[[4]])
               rr@datasets <- rr@datasets[dss]
-            
+            }
+            if (is.character(stats) && length(stats) == 1)
+              stats <- grep(stats,dimnames(rr@foldResults)[[2]])
             rr@foldResults <- rr@foldResults[its,stats,vars,dss,drop=F]
             rr
+  
           }
           )
-
-
-
 
 
 # ==============================================================

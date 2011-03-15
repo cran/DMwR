@@ -1,0 +1,13 @@
+VERSION 0.2.0 (2011-03-15)
+
+- Added lofactor() function that implements the LOF algorithm by Breunig and colleagues (2000). This function is strongly based on the code previously available in package dprep by Acuna and colleagues (2009), which was removed from CRAN.
+
+- Fixed minor bug on manyNAs() when no row satisfied the constraints satisfied by the user. In those situations the function was generating an empty index vector which could lead to undesirable side-effects, while now it generates a warning indicating an empty index.
+
+- Modified the subset method for compExp objects. The subset method for these objects now allows for the specification of subsets of the learners, datasets and statistics through a regular expression for easier subseting on larger experimental comparisons.
+
+- Added the utility function dsNames() to obtain the names of the data sets involved in an experimental comparison.
+
+- Added the utility function learnerNames() to obtain the names of the learners involved in an experimental comparison.
+
+- Added the utility function statNames() to obtain the names of the evaluation statistics involved in an experimental comparison.

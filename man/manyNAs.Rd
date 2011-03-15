@@ -6,7 +6,7 @@ Find rows with too many NA values
 }
 \description{
 Small utility function to obtain the number of the rows
-in a data frame that have either a "large" number of 
+in a data frame that have  a "large" number of 
 unknown values.
 "Large" can be defined either as a proportion of the
 number of columns or as the number in itself.
@@ -21,11 +21,13 @@ manyNAs(data, nORp = 0.2)
 }
   \item{nORp}{
 A number controlling when a row is considered to have too many NA values
-  (defaults to 0.2, i.e. 20\% of the columns).
+  (defaults to 0.2, i.e. 20\% of the columns). If no rows satisfy the
+  constraint indicated by the user, a warning is generated.
 }
 }
 \value{
-A vector with the IDs of the rows with too many NA values
+A vector with the IDs of the rows with too many NA values. If there are
+  no rows with many NA values and error is generated.
 }
 \references{
 Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
