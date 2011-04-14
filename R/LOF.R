@@ -68,15 +68,19 @@ lofactor <- function(data,k) {
 dist.to.knn <- function(dataset,neighbors) {
 
   numrow <- dim(dataset)[1L]
-  knndist <- matrix(0,nrow=numrow,ncol=numrow)
   mxNN <- neighbors*2+2
+  knndist <- matrix(0,nrow=mxNN,ncol=numrow)
+
 
   for (i in 1:numrow) {
     # find obervations that make up the k-distance neighborhood for observation dataset[i,]
     neighdist <- knneigh.vect(dataset[i,],dataset,neighbors)
     
     x <- length(neighdist)
-    if (x > mxNN) mxNN <- x
+    if (x > mxNN) {
+      knndist <- rbind(knndist,matrix(rep(0,(x-mxNN)*numrow),ncol=numrow))
+      mxNN <- x
+    }
     knndist[1:x,i] <- neighdist
   }
 
