@@ -1,3 +1,9 @@
+VERSION 0.2.2 (2012-02-23)
+
+- Fixed bug in function knnImputation(). Thanks to Pedro Coelho for spotting the bug.
+- Fixed warnings in checking the package on R 2.15.0 due to imports
+
+
 VERSION 0.2.1 (2011-04-14)
 
 - Fixed  bug on function dist.to.knn() that was affecting the lofactor() function on some situations.

@@ -74,7 +74,7 @@ centralImputation <- function(data) {
 # If meth='median' it uses the median/most frequent value,
 # instead.
 # =====================================================
-# Luis Torgo, Mar 2009
+# Luis Torgo, Mar 2009, Nov 2011
 # =====================================================
 knnImputation <- function(data,k=10,scale=T,meth='weighAvg',distData=NULL) {
 
@@ -114,11 +114,12 @@ knnImputation <- function(data,k=10,scale=T,meth='weighAvg',distData=NULL) {
 
     tgtAs <- which(is.na(dm[i,]))
     
-    dist <- scale(xcomplete,dm[i,],FALSE)[,-tgtAs]
+    dist <- scale(xcomplete,dm[i,],FALSE)
     
     xnom <- setdiff(nomAttrs,tgtAs)
     if (length(xnom)) dist[,xnom] <-ifelse(dist[,xnom]>0,1,dist[,xnom])
-    
+
+    dist <- dist[,-tgtAs]
     dist <- sqrt(drop(dist^2 %*% rep(1,ncol(dist))))
     ks <- order(dist)[seq(k)]
     for(j in tgtAs)
