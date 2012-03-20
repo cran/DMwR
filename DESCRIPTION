@@ -1,12 +1,12 @@
 Package: DMwR
 Type: Package
 Title: Functions and data for "Data Mining with R"
-Version: 0.2.2
+Version: 0.2.3
 Depends: R(>= 2.10), methods, graphics, xts (>= 0.6-7), quantmod (>=
         0.3-8), ROCR (>= 1.0-2), class (>= 7.3-1), rpart (>= 3.1-46),
         abind (>= 1.1-0), cluster (>= 1.12.1), lattice (>= 0.18-3),
         grid (>= 2.10.1), zoo (>= 1.6-4)
-Date: 2012-02-23
+Date: 2012-03-20
 Author: Luis Torgo
 Maintainer: Luis Torgo <ltorgo@dcc.fc.up.pt>
 Description: This package includes functions and data accompanying the
@@ -15,6 +15,6 @@ Description: This package includes functions and data accompanying the
 License: GPL (>= 2)
 LazyLoad: yes
 LazyData: yes
-Packaged: 2012-02-23 14:26:08 UTC; ltorgo
+Packaged: 2012-03-20 15:51:00 UTC; ltorgo
 Repository: CRAN
-Date/Publication: 2012-02-23 17:07:43
+Date/Publication: 2012-03-20 16:52:16

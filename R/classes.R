@@ -223,76 +223,68 @@ cvRun <- function(l,t,s,r) {
 # --------------------------------------------------------------
 # Methods:
 
-
-# summary
-setMethod("summary",
-          signature(object="cvRun"),
-          function(object,...) {
-            cat('\n== Summary of a Cross Validation Experiment ==\n')
-            print(object@settings)
-            cat('\n* Data set :: ',object@dataset@name)
-            cat('\n* Learner  :: ',object@learner@func,' with parameters ')
-            for(x in names(object@learner@pars))
-              cat(x,' = ',
-                  object@learner@pars[[x]],' ')
-            cat('\n\n* Summary of Experiment Results:\n\n')
-            apply(object@foldResults,2,function(x)
-                  c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                    min=min(x,na.rm=T),max=max(x,na.rm=T),
-                    invalid=sum(is.na(x)))
+summary.cvRun <- function(object,...) {
+  cat('\n== Summary of a Cross Validation Experiment ==\n')
+  print(object@settings)
+  cat('\n* Data set :: ',object@dataset@name)
+  cat('\n* Learner  :: ',object@learner@func,' with parameters ')
+  for(x in names(object@learner@pars))
+    cat(x,' = ',
+        object@learner@pars[[x]],' ')
+  cat('\n\n* Summary of Experiment Results:\n\n')
+  apply(object@foldResults,2,function(x)
+        c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+          min=min(x,na.rm=T),max=max(x,na.rm=T),
+          invalid=sum(is.na(x)))
         )
-          }
-          )
+}
 
-# plot
-setMethod("plot",
-          signature(x="cvRun",y='missing'),
-          function(x,y,...) {
-            sum <- apply(x@foldResults,2,function(x)
-                         c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                           min=min(x,na.rm=T),max=max(x,na.rm=T),
-                           invalid=sum(is.na(x)))
-                         )
-            nstats <- ncol(sum)
-            layout(matrix(c(1:nstats,nstats,nstats+1:nstats,2*nstats),ncol=2),
-                   widths=c(3,1),heights=c(rep(5,nstats),1))
+plot.cvRun <- function(x,y,...) {
+  sum <- apply(x@foldResults,2,function(x)
+               c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+                 min=min(x,na.rm=T),max=max(x,na.rm=T),
+                 invalid=sum(is.na(x)))
+               )
+  nstats <- ncol(sum)
+  layout(matrix(c(1:nstats,nstats,nstats+1:nstats,2*nstats),ncol=2),
+         widths=c(3,1),heights=c(rep(5,nstats),1))
+  
+  par(mar=c(0,4.1,0,0))
+  for(s in 1:(nstats-1)) {
+    plot(x@foldResults[,s],type='b',xlab='',ylab=colnames(x@foldResults)[s],
+         main='',xaxt='n')
+    t <- axTicks(2)
+    abline(h=t,lty=3,col='gray')
+    abline(h=sum[1,s],lty=2)
+  }
+  par(mar=c(4.1,4.1,0,0))
+  plot(x@foldResults[,nstats],type='b',xlab='Folds',
+       ylab=colnames(x@foldResults)[nstats], main='')
+  t <- axTicks(2)
+  abline(h=t,lty=3,col='gray')
+  abline(h=sum[1,nstats],lty=2)
+  
+  par(mar=c(0,0,0,0))
+  for(s in 1:(nstats-1)) {
+    boxplot(x@foldResults[,s],type='b',xlab='',ylab='',
+            main='',xaxt='n',yaxt='n')
+    abline(h=sum[1,s],lty=2)
+    t <- axTicks(2)
+    abline(h=t,lty=3,col='gray')
+    
+  }
+  
+  par(mar=c(4.1,0,0,0))
+  boxplot(x@foldResults[,nstats],type='b',xlab='',
+          ylab='', main='',xaxt='n',yaxt='n')
+  abline(h=sum[1,nstats],lty=2)
+  t <- axTicks(2)
+  abline(h=t,lty=3,col='gray')
+  mtext(paste('DATASET:',x@dataset@name),1,line=1,cex=0.8)
+  mtext(paste('LEARNER:',x@learner@func),1,line=2,cex=0.8)
+  
+}
 
-            par(mar=c(0,4.1,0,0))
-            for(s in 1:(nstats-1)) {
-              plot(x@foldResults[,s],type='b',xlab='',ylab=colnames(x@foldResults)[s],
-                   main='',xaxt='n')
-              t <- axTicks(2)
-              abline(h=t,lty=3,col='gray')
-              abline(h=sum[1,s],lty=2)
-            }
-            par(mar=c(4.1,4.1,0,0))
-            plot(x@foldResults[,nstats],type='b',xlab='Folds',
-                 ylab=colnames(x@foldResults)[nstats], main='')
-            t <- axTicks(2)
-            abline(h=t,lty=3,col='gray')
-            abline(h=sum[1,nstats],lty=2)
-            
-            par(mar=c(0,0,0,0))
-            for(s in 1:(nstats-1)) {
-              boxplot(x@foldResults[,s],type='b',xlab='',ylab='',
-                      main='',xaxt='n',yaxt='n')
-              abline(h=sum[1,s],lty=2)
-              t <- axTicks(2)
-              abline(h=t,lty=3,col='gray')
-              
-            }
-            
-            par(mar=c(4.1,0,0,0))
-            boxplot(x@foldResults[,nstats],type='b',xlab='',
-                    ylab='', main='',xaxt='n',yaxt='n')
-            abline(h=sum[1,nstats],lty=2)
-            t <- axTicks(2)
-            abline(h=t,lty=3,col='gray')
-            mtext(paste('DATASET:',x@dataset@name),1,line=1,cex=0.8)
-            mtext(paste('LEARNER:',x@learner@func),1,line=2,cex=0.8)
-
-          }
-          )
 
 
 
@@ -372,79 +364,71 @@ hldRun <- function(l,t,s,r) {
 # --------------------------------------------------------------
 # Methods:
 
+summary.hldRun <- function(object,...) {
+  cat('\n== Summary of a Hold Out Experiment ==\n')
+  print(object@settings)
+  cat('\n* Data set :: ',object@dataset@name)
+  cat('\n* Learner  :: ',object@learner@func,' with parameters:')
+  for(x in names(object@learner@pars)) {
+    k <- object@learner@pars[[x]]
+    k <- paste(k,collapse=' ')
+    k <- if (nchar(k) > 5) paste(substr(k,1,5),' ...') else k
+    cat('\n\t',x,' = ',k,' ')
+  }
+  cat('\n\n* Summary of Experiment Results:\n\n')
+  apply(object@foldResults,2,function(x)
+        c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+          min=min(x,na.rm=T),max=max(x,na.rm=T),
+          invalid=sum(is.na(x)))
+        )     
+}
 
-# summary
-setMethod("summary",
-          signature(object="hldRun"),
-          function(object,...) {
-            cat('\n== Summary of a Hold Out Experiment ==\n')
-            print(object@settings)
-            cat('\n* Data set :: ',object@dataset@name)
-            cat('\n* Learner  :: ',object@learner@func,' with parameters:')
-            for(x in names(object@learner@pars)) {
-              k <- object@learner@pars[[x]]
-              k <- paste(k,collapse=' ')
-              k <- if (nchar(k) > 5) paste(substr(k,1,5),' ...') else k
-              cat('\n\t',x,' = ',k,' ')
-            }
-            cat('\n\n* Summary of Experiment Results:\n\n')
-            apply(object@foldResults,2,function(x)
-                  c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                    min=min(x,na.rm=T),max=max(x,na.rm=T),
-                    invalid=sum(is.na(x)))
-                  )     
-          }
-          )
+plot.hldRun <- function(x,y,...) {
+  sum <- apply(x@foldResults,2,function(x)
+               c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+                 min=min(x,na.rm=T),max=max(x,na.rm=T),
+                 invalid=sum(is.na(x)))
+               )
+  nstats <- ncol(sum)
+  layout(matrix(c(1:nstats,nstats,nstats+1:nstats,2*nstats),ncol=2),
+         widths=c(3,1),heights=c(rep(5,nstats),1))
+  
+  par(mar=c(0,4.1,0,0))
+  for(s in 1:(nstats-1)) {
+    plot(x@foldResults[,s],type='b',xlab='',ylab=colnames(x@foldResults)[s],
+         main='',xaxt='n')
+    t <- axTicks(2)
+    abline(h=t,lty=3,col='gray')
+    abline(h=sum[1,s],lty=2)
+  }
+  par(mar=c(4.1,4.1,0,0))
+  plot(x@foldResults[,nstats],type='b',xlab='Repetitions',
+       ylab=colnames(x@foldResults)[nstats], main='')
+  t <- axTicks(2)
+  abline(h=t,lty=3,col='gray')
+  abline(h=sum[1,nstats],lty=2)
+  
+  par(mar=c(0,0,0,0))
+  for(s in 1:(nstats-1)) {
+    boxplot(x@foldResults[,s],type='b',xlab='',ylab='',
+            main='',xaxt='n',yaxt='n')
+    abline(h=sum[1,s],lty=2)
+    t <- axTicks(2)
+    abline(h=t,lty=3,col='gray')
+    
+  }
+  
+  par(mar=c(4.1,0,0,0))
+  boxplot(x@foldResults[,nstats],type='b',xlab='',
+          ylab='', main='',xaxt='n',yaxt='n')
+  abline(h=sum[1,nstats],lty=2)
+  t <- axTicks(2)
+  abline(h=t,lty=3,col='gray')
+  mtext(paste('DATASET:',x@dataset@name),1,line=1,cex=0.8)
+  mtext(paste('LEARNER:',x@learner@func),1,line=2,cex=0.8)
+  
+}
 
-# plot
-setMethod("plot",
-          signature(x="hldRun",y='missing'),
-          function(x,y,...) {
-            sum <- apply(x@foldResults,2,function(x)
-                         c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                           min=min(x,na.rm=T),max=max(x,na.rm=T),
-                           invalid=sum(is.na(x)))
-                         )
-            nstats <- ncol(sum)
-            layout(matrix(c(1:nstats,nstats,nstats+1:nstats,2*nstats),ncol=2),
-                   widths=c(3,1),heights=c(rep(5,nstats),1))
-
-            par(mar=c(0,4.1,0,0))
-            for(s in 1:(nstats-1)) {
-              plot(x@foldResults[,s],type='b',xlab='',ylab=colnames(x@foldResults)[s],
-                   main='',xaxt='n')
-              t <- axTicks(2)
-              abline(h=t,lty=3,col='gray')
-              abline(h=sum[1,s],lty=2)
-            }
-            par(mar=c(4.1,4.1,0,0))
-            plot(x@foldResults[,nstats],type='b',xlab='Repetitions',
-                 ylab=colnames(x@foldResults)[nstats], main='')
-            t <- axTicks(2)
-            abline(h=t,lty=3,col='gray')
-            abline(h=sum[1,nstats],lty=2)
-            
-            par(mar=c(0,0,0,0))
-            for(s in 1:(nstats-1)) {
-              boxplot(x@foldResults[,s],type='b',xlab='',ylab='',
-                      main='',xaxt='n',yaxt='n')
-              abline(h=sum[1,s],lty=2)
-              t <- axTicks(2)
-              abline(h=t,lty=3,col='gray')
-              
-            }
-            
-            par(mar=c(4.1,0,0,0))
-            boxplot(x@foldResults[,nstats],type='b',xlab='',
-                    ylab='', main='',xaxt='n',yaxt='n')
-            abline(h=sum[1,nstats],lty=2)
-            t <- axTicks(2)
-            abline(h=t,lty=3,col='gray')
-            mtext(paste('DATASET:',x@dataset@name),1,line=1,cex=0.8)
-            mtext(paste('LEARNER:',x@learner@func),1,line=2,cex=0.8)
-
-          }
-          )
 
 
 
@@ -522,29 +506,25 @@ loocvRun <- function(l,t,s,r) {
 # --------------------------------------------------------------
 # Methods:
 
+summary.loocvRun <- function(object,...) {
+  cat('\n== Summary of a Leave One Out Cross Validation  Experiment ==\n')
+  print(object@settings)
+  cat('\n* Data set :: ',object@dataset@name)
+  cat('\n* Learner  :: ',object@learner@func,' with parameters:')
+  for(x in names(object@learner@pars)) {
+    k <- object@learner@pars[[x]]
+    k <- paste(k,collapse=' ')
+    k <- if (nchar(k) > 5) paste(substr(k,1,5),' ...') else k
+    cat('\n\t',x,' = ',k,' ')
+  }
+  cat('\n\n* Summary of Experiment Results:\n\n')
+  apply(object@foldResults,2,function(x)
+        c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+          min=min(x,na.rm=T),max=max(x,na.rm=T),
+          invalid=sum(is.na(x)))
+        ) 
+}
 
-# summary
-setMethod("summary",
-          signature(object="loocvRun"),
-          function(object,...) {
-            cat('\n== Summary of a Leave One Out Cross Validation  Experiment ==\n')
-            print(object@settings)
-            cat('\n* Data set :: ',object@dataset@name)
-            cat('\n* Learner  :: ',object@learner@func,' with parameters:')
-            for(x in names(object@learner@pars)) {
-              k <- object@learner@pars[[x]]
-              k <- paste(k,collapse=' ')
-              k <- if (nchar(k) > 5) paste(substr(k,1,5),' ...') else k
-              cat('\n\t',x,' = ',k,' ')
-            }
-            cat('\n\n* Summary of Experiment Results:\n\n')
-            apply(object@foldResults,2,function(x)
-                  c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                    min=min(x,na.rm=T),max=max(x,na.rm=T),
-                    invalid=sum(is.na(x)))
-                  ) 
-          }
-          )
 
 
 
@@ -617,29 +597,25 @@ bootRun <- function(l,t,s,r) {
 # --------------------------------------------------------------
 # Methods:
 
+summary.bootRun <- function(object,...) {
+  cat('\n== Summary of a Bootstrap Experiment ==\n')
+  print(object@settings)
+  cat('\n* Data set :: ',object@dataset@name)
+  cat('\n* Learner  :: ',object@learner@func,' with parameters:')
+  for(x in names(object@learner@pars)) {
+    k <- object@learner@pars[[x]]
+    k <- paste(k,collapse=' ')
+    k <- if (nchar(k) > 5) paste(substr(k,1,5),' ...') else k
+    cat('\n\t',x,' = ',k,' ')
+  }
+  cat('\n\n* Summary of Experiment Results:\n\n')
+  apply(object@foldResults,2,function(x)
+        c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+          min=min(x,na.rm=T),max=max(x,na.rm=T),
+          invalid=sum(is.na(x)))
+        )
+}
 
-# summary
-setMethod("summary",
-          signature(object="bootRun"),
-          function(object,...) {
-            cat('\n== Summary of a Bootstrap Experiment ==\n')
-            print(object@settings)
-            cat('\n* Data set :: ',object@dataset@name)
-            cat('\n* Learner  :: ',object@learner@func,' with parameters:')
-            for(x in names(object@learner@pars)) {
-              k <- object@learner@pars[[x]]
-              k <- paste(k,collapse=' ')
-              k <- if (nchar(k) > 5) paste(substr(k,1,5),' ...') else k
-              cat('\n\t',x,' = ',k,' ')
-            }
-            cat('\n\n* Summary of Experiment Results:\n\n')
-            apply(object@foldResults,2,function(x)
-                  c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                    min=min(x,na.rm=T),max=max(x,na.rm=T),
-                    invalid=sum(is.na(x)))
-                  )
-          }
-          )
 
 
 
@@ -725,76 +701,69 @@ mcRun <- function(l,t,s,r) {
 # --------------------------------------------------------------
 # Methods:
 
+summary.mcRun <- function(object,...) {
+  cat('\n== Summary of a Monte Carlo Simulation Experiment ==\n')
+  print(object@settings)
+  cat('\n* Data set :: ',object@dataset@name)
+  cat('\n* Learner  :: ',deparse(object@learner@func),' with parameters \n')
+  for(x in names(object@learner@pars))
+    cat('\t',x,' = ',
+        deparse(object@learner@pars[[x]]),'\n')
+  cat('\n\n* Summary of Experiment Results:\n\n')
+  apply(object@foldResults,2,function(x)
+        c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+          min=min(x,na.rm=T),max=max(x,na.rm=T),
+          invalid=sum(is.na(x)))
+        )
+}
 
-# summary
-setMethod("summary",
-          signature(object="mcRun"),
-          function(object,...) {
-            cat('\n== Summary of a Monte Carlo Simulation Experiment ==\n')
-            print(object@settings)
-            cat('\n* Data set :: ',object@dataset@name)
-            cat('\n* Learner  :: ',deparse(object@learner@func),' with parameters \n')
-            for(x in names(object@learner@pars))
-              cat('\t',x,' = ',
-                  deparse(object@learner@pars[[x]]),'\n')
-            cat('\n\n* Summary of Experiment Results:\n\n')
-            apply(object@foldResults,2,function(x)
-                  c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                    min=min(x,na.rm=T),max=max(x,na.rm=T),
-                    invalid=sum(is.na(x)))
-                  )
-          }
-          )
 
-# plot
-setMethod("plot",
-          signature(x="mcRun",y='missing'),
-          function(x,y,...) {
-            sum <- apply(x@foldResults,2,function(x)
-                         c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                           min=min(x,na.rm=T),max=max(x,na.rm=T),
-                           invalid=sum(is.na(x)))
-                         )
-            nstats <- ncol(sum)
-            layout(matrix(c(1:nstats,nstats,nstats+1:nstats,2*nstats),ncol=2),
-                   widths=c(3,1),heights=c(rep(5,nstats),1))
+plot.mcRun <- function(x,y,...) {
+  sum <- apply(x@foldResults,2,function(x)
+               c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+                 min=min(x,na.rm=T),max=max(x,na.rm=T),
+                 invalid=sum(is.na(x)))
+               )
+  nstats <- ncol(sum)
+  layout(matrix(c(1:nstats,nstats,nstats+1:nstats,2*nstats),ncol=2),
+         widths=c(3,1),heights=c(rep(5,nstats),1))
+  
+  par(mar=c(0,4.1,0,0))
+  for(s in 1:(nstats-1)) {
+    plot(x@foldResults[,s],type='b',xlab='',ylab=colnames(x@foldResults)[s],
+         main='',xaxt='n')
+    t <- axTicks(2)
+    abline(h=t,lty=3,col='gray')
+    abline(h=sum[1,s],lty=2)
+  }
+  par(mar=c(4.1,4.1,0,0))
+  plot(x@foldResults[,nstats],type='b',xlab='Folds',
+       ylab=colnames(x@foldResults)[nstats], main='')
+  t <- axTicks(2)
+  abline(h=t,lty=3,col='gray')
+  abline(h=sum[1,nstats],lty=2)
+  
+  par(mar=c(0,0,0,0))
+  for(s in 1:(nstats-1)) {
+    boxplot(x@foldResults[,s],type='b',xlab='',ylab='',
+            main='',xaxt='n',yaxt='n')
+    abline(h=sum[1,s],lty=2)
+    t <- axTicks(2)
+    abline(h=t,lty=3,col='gray')
+    
+  }
+  
+  par(mar=c(4.1,0,0,0))
+  boxplot(x@foldResults[,nstats],type='b',xlab='',
+          ylab='', main='',xaxt='n',yaxt='n')
+  abline(h=sum[1,nstats],lty=2)
+  t <- axTicks(2)
+  abline(h=t,lty=3,col='gray')
+  mtext(paste('DATASET:',x@dataset@name),1,line=1,cex=0.8)
+  mtext(paste('LEARNER:',x@learner@func),1,line=2,cex=0.8)
+  
+}
 
-            par(mar=c(0,4.1,0,0))
-            for(s in 1:(nstats-1)) {
-              plot(x@foldResults[,s],type='b',xlab='',ylab=colnames(x@foldResults)[s],
-                   main='',xaxt='n')
-              t <- axTicks(2)
-              abline(h=t,lty=3,col='gray')
-              abline(h=sum[1,s],lty=2)
-            }
-            par(mar=c(4.1,4.1,0,0))
-            plot(x@foldResults[,nstats],type='b',xlab='Folds',
-                 ylab=colnames(x@foldResults)[nstats], main='')
-            t <- axTicks(2)
-            abline(h=t,lty=3,col='gray')
-            abline(h=sum[1,nstats],lty=2)
-            
-            par(mar=c(0,0,0,0))
-            for(s in 1:(nstats-1)) {
-              boxplot(x@foldResults[,s],type='b',xlab='',ylab='',
-                      main='',xaxt='n',yaxt='n')
-              abline(h=sum[1,s],lty=2)
-              t <- axTicks(2)
-              abline(h=t,lty=3,col='gray')
-              
-            }
-            
-            par(mar=c(4.1,0,0,0))
-            boxplot(x@foldResults[,nstats],type='b',xlab='',
-                    ylab='', main='',xaxt='n',yaxt='n')
-            abline(h=sum[1,nstats],lty=2)
-            t <- axTicks(2)
-            abline(h=t,lty=3,col='gray')
-            mtext(paste('DATASET:',x@dataset@name),1,line=1,cex=0.8)
-            mtext(paste('LEARNER:',x@learner@func),1,line=2,cex=0.8)
-            
-          }
-          )
 
 
 
@@ -840,95 +809,87 @@ compExp <- function(l,t,s,r) {
 # --------------------------------------------------------------
 # Methods:
 
-
-# plot
-setMethod("plot",
-          signature(x="compExp",y='missing'),
-          function(x,y,stats=dimnames(x@foldResults)[[2]],...) {
-            require(lattice)
-            require(grid)
+plot.compExp <- function(x,y,stats=dimnames(x@foldResults)[[2]],...) {
+  require(lattice)
+  require(grid)
   
-            # Function that transforms a 4-dimension array into a data frame
-            # it's similar to reshape() goals but I was unable to use the latter...
-            flattenRes <- function(foldRes) {
-              dim <- prod(dim(foldRes)[c(1,3,4)])
-              m <- matrix(NA,nrow=dim,ncol=dim(foldRes)[2])
-              m[1:dim(foldRes)[1],] <- foldRes[,,1,1]
-              for(d in 1:dim(foldRes)[4])
-                for(v in 1:dim(foldRes)[3])
-                  m[(d-1)*dim(foldRes)[1]*dim(foldRes)[3]+(v-1)*dim(foldRes)[1]+1:dim(foldRes)[1],] <- foldRes[,,v,d]
-              
-              colnames(m) <- dimnames(foldRes)[[2]]
-              d <- data.frame(m,
-                              fold=rep(1:dim(foldRes)[1],prod(dim(foldRes)[3:4])),
-                              var=rep(dimnames(foldRes)[[3]],each=dim(foldRes)[1],dim(foldRes)[4]),
-                              ds=rep(dimnames(foldRes)[[4]],each=prod(dim(foldRes)[c(1,3)]))
-                              )
-              
-            }
-            z <- flattenRes(x@foldResults)
-            nstats <- length(stats)
-            grid.newpage()
-            pushViewport(viewport(layout=grid.layout(nstats, 1)))
-            for(s in seq(along=stats)) {
-              form <- as.formula(paste('var ~',stats[s],'| ds'))
-              gr <- bwplot(form,data=z,
-                           panel=function(x,y) {
-                             panel.grid(h=0,v=-1)
-                             panel.bwplot(x,y)
-                           },... )
-              
-              pushViewport(viewport(layout.pos.col=1,layout.pos.row=s))
-              print(gr,newpage=F)
-              upViewport()
-            }
+  # Function that transforms a 4-dimension array into a data frame
+  # it's similar to reshape() goals but I was unable to use the latter...
+  flattenRes <- function(foldRes) {
+    dim <- prod(dim(foldRes)[c(1,3,4)])
+    m <- matrix(NA,nrow=dim,ncol=dim(foldRes)[2])
+    m[1:dim(foldRes)[1],] <- foldRes[,,1,1]
+    for(d in 1:dim(foldRes)[4])
+      for(v in 1:dim(foldRes)[3])
+        m[(d-1)*dim(foldRes)[1]*dim(foldRes)[3]+(v-1)*dim(foldRes)[1]+1:dim(foldRes)[1],] <- foldRes[,,v,d]
+    
+    colnames(m) <- dimnames(foldRes)[[2]]
+    d <- data.frame(m,
+                    fold=rep(1:dim(foldRes)[1],prod(dim(foldRes)[3:4])),
+                    var=rep(dimnames(foldRes)[[3]],each=dim(foldRes)[1],dim(foldRes)[4]),
+                    ds=rep(dimnames(foldRes)[[4]],each=prod(dim(foldRes)[c(1,3)]))
+                    )
+    
+  }
+  z <- flattenRes(x@foldResults)
+  nstats <- length(stats)
+  grid.newpage()
+  pushViewport(viewport(layout=grid.layout(nstats, 1)))
+  for(s in seq(along=stats)) {
+    form <- as.formula(paste('var ~',stats[s],'| ds'))
+    gr <- bwplot(form,data=z,
+                 panel=function(x,y) {
+                   panel.grid(h=0,v=-1)
+                   panel.bwplot(x,y)
+                 },... )
+    
+    pushViewport(viewport(layout.pos.col=1,layout.pos.row=s))
+    print(gr,newpage=F)
+    upViewport()
+  }
+  
+}
 
-          }
-          )
+summary.compExp <- function(object,...) {
+  cat('\n== Summary of a ',
+      switch(class(object@settings),
+             cvSettings='Cross Validation',
+             hldSettings='Hold Out',
+             bootSettings='Bootstrap',
+             mcSettings='Monte Carlo'
+             ),
+      ' Experiment ==\n')
+  print(object@settings)
+  cat('\n* Data sets :: ',
+      paste(sapply(object@datasets,function(x) x@name),collapse=', '))
+  cat('\n* Learners  :: ',paste(names(object@learners),collapse=', '))
+  
+  cat('\n\n* Summary of Experiment Results:\n\n')
+  ld <- list()
+  
+  for(d in 1:dim(object@foldResults)[4]) {
+    lv <- list()
+    cat("\n-> Datataset: ",dimnames(object@foldResults)[[4]][d],'\n')
+    for(v in 1:dim(object@foldResults)[3]) {
+      cat("\n\t*Learner:",dimnames(object@foldResults)[[3]][v],"\n")
+      tab <- apply(object@foldResults[,,v,d,drop=F],2,function(x)
+                   c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
+                     min=if (all(is.na(x))) NA else min(x,na.rm=T),
+                     max=if (all(is.na(x))) NA else max(x,na.rm=T),
+                     invalid=sum(is.na(x)))
+                   )
+      print(tab)
+      lv <- c(lv,list(tab))
+    }
+    cat('\n')
+    names(lv) <- dimnames(object@foldResults)[[3]]
+    ld <- c(ld,list(lv))
+  }
+  names(ld) <- dimnames(object@foldResults)[[4]]
+  invisible(ld)
+  
+}
 
-# summary
-setMethod("summary",
-          signature(object="compExp"),
-          function(object,...) {
-            cat('\n== Summary of a ',
-                switch(class(object@settings),
-                       cvSettings='Cross Validation',
-                       hldSettings='Hold Out',
-                       bootSettings='Bootstrap',
-                       mcSettings='Monte Carlo'
-                       ),
-                ' Experiment ==\n')
-            print(object@settings)
-            cat('\n* Data sets :: ',
-                paste(sapply(object@datasets,function(x) x@name),collapse=', '))
-            cat('\n* Learners  :: ',paste(names(object@learners),collapse=', '))
-
-            cat('\n\n* Summary of Experiment Results:\n\n')
-            ld <- list()
-            
-            for(d in 1:dim(object@foldResults)[4]) {
-              lv <- list()
-              cat("\n-> Datataset: ",dimnames(object@foldResults)[[4]][d],'\n')
-              for(v in 1:dim(object@foldResults)[3]) {
-                cat("\n\t*Learner:",dimnames(object@foldResults)[[3]][v],"\n")
-                tab <- apply(object@foldResults[,,v,d,drop=F],2,function(x)
-                             c(avg=mean(x,na.rm=T),std=sd(x,na.rm=T),
-                               min=if (all(is.na(x))) NA else min(x,na.rm=T),
-                               max=if (all(is.na(x))) NA else max(x,na.rm=T),
-                               invalid=sum(is.na(x)))
-                             )
-                print(tab)
-                lv <- c(lv,list(tab))
-              }
-              cat('\n')
-              names(lv) <- dimnames(object@foldResults)[[3]]
-              ld <- c(ld,list(lv))
-            }
-            names(ld) <- dimnames(object@foldResults)[[4]]
-            invisible(ld)
-            
-          }
-          )
 
 # show
 setMethod("show","compExp",
@@ -962,7 +923,7 @@ setMethod("show","compExp",
 # =====================================================
 # Example runs:
 # > plot(subset(nnet,stats='e1',vars=1:4))
-# 
+#
 setMethod("subset",
           signature(x='compExp'),
           function(x,
@@ -989,6 +950,7 @@ setMethod("subset",
   
           }
           )
+
 
 
 # ==============================================================
@@ -1028,40 +990,33 @@ tradeRecord <- function(t,p,tc,c,pf,pp) {
 # --------------------------------------------------------------
 # Methods:
 
+plot.tradeRecord <- function(x,y,verbose=T,...) {
+  
+  market <- cbind(y,coredata(x@trading)[,c('Equity','N.Stocks')])
+  candleChart(market,
+              TA=c(.addEq(),.addSt()),
+              ...)
+  if (verbose)
+    cat('Rentability = ',100*(coredata(market[nrow(market),'Equity'])/
+                              coredata(market[1,'Equity'])-1),'%\n')
+}
 
-# plot
-setMethod("plot",
-          signature(x="tradeRecord",y='ANY'),
-          function(x,y,verbose=T,...) {
 
-            market <- cbind(y,coredata(x@trading)[,c('Equity','N.Stocks')])
-            candleChart(market,
-                        TA=c(.addEq(),.addSt()),
-                        ...)
-            if (verbose)
-              cat('Rentability = ',100*(coredata(market[nrow(market),'Equity'])/
-                                        coredata(market[1,'Equity'])-1),'%\n')
-          }
-          )
+summary.tradeRecord <- function(object,...) {
+  cat('\n== Summary of a Trading Simulation with ',nrow(object@trading),' days ==\n')
+  cat('\nTrading policy function : ',object@policy.func,'\n')
+  cat('Policy function parameters:\n')
+  for(x in names(object@policy.pars))
+    cat('\t',x,' = ',deparse(object@policy.pars[[x]]),'\n')
+  cat('\n')
+  cat('Transaction costs : ',object@trans.cost,'\n')
+  cat('Initial Equity    : ',round(object@init.cap,1),'\n')
+  cat('Final Equity      : ',round(object@trading[nrow(object@trading),'Equity'],1),'  Return : ',
+      round(100*(object@trading[nrow(object@trading),'Equity']/object@init.cap - 1),2),'%\n')
+  cat('Number of trading positions: ',NROW(object@positions),'\n')
+  cat('\nUse function "tradingEvaluation()" for further stats on this simulation.\n\n')
+}
 
-# summary
-setMethod("summary",
-          signature(object="tradeRecord"),
-          function(object,...) {
-            cat('\n== Summary of a Trading Simulation with ',nrow(object@trading),' days ==\n')
-            cat('\nTrading policy function : ',object@policy.func,'\n')
-            cat('Policy function parameters:\n')
-            for(x in names(object@policy.pars))
-              cat('\t',x,' = ',deparse(object@policy.pars[[x]]),'\n')
-            cat('\n')
-            cat('Transaction costs : ',object@trans.cost,'\n')
-            cat('Initial Equity    : ',round(object@init.cap,1),'\n')
-            cat('Final Equity      : ',round(object@trading[nrow(object@trading),'Equity'],1),'  Return : ',
-                round(100*(object@trading[nrow(object@trading),'Equity']/object@init.cap - 1),2),'%\n')
-            cat('Number of trading positions: ',NROW(object@positions),'\n')
-            cat('\nUse function "tradingEvaluation()" for further stats on this simulation.\n\n')
-          }
-          )
 
 # show
 setMethod("show","tradeRecord",

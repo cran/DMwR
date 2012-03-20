@@ -21,8 +21,8 @@ exportClasses(
             )
 
 exportMethods(show)
-exportMethods(summary)
-exportMethods(plot)
+#exportMethods(summary)
+#exportMethods(plot)
 exportMethods(subset)
 
 export(
@@ -96,3 +96,16 @@ export(
        )
 
 
+S3method(plot,cvRun)
+S3method(summary,cvRun)
+S3method(plot,hldRun)
+S3method(summary,hldRun)
+S3method(summary,loocvRun)
+S3method(summary,bootRun)
+S3method(plot,mcRun)
+S3method(summary,mcRun)
+S3method(plot,compExp)
+S3method(summary,compExp)
+
+S3method(plot,tradeRecord)
+S3method(summary,tradeRecord)
