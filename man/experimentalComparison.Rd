@@ -82,20 +82,24 @@ The goal of this function is to allow to carry out different types of
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 
 \seealso{
-  \code{\link{variants}},\code{\link{bestScores}},\code{\link{rankSystems}},\code{\link{compAnalysis}}
-\code{\link{crossValidation}}, \code{\link{loocv}},
+  \code{\link{variants}},\code{\link{bestScores}},\code{\link{rankSystems}},
+  \code{\link{compAnalysis}}, \code{\link{crossValidation}}, \code{\link{loocv}},
 \code{\link{holdOut}}, \code{\link{monteCarlo}},
-\code{\link{bootstrap}}, \code{\linkS4class{compExp}}, \code{\linkS4class{cvSettings}}, \code{\linkS4class{hldSettings}}, \code{\linkS4class{mcSettings}}, \code{\linkS4class{loocvSettings}}, \code{\linkS4class{bootSettings}}
+  \code{\link{bootstrap}},  \code{\linkS4class{compExp}},
+  \code{\linkS4class{cvSettings}},  \code{\linkS4class{hldSettings}},
+  \code{\linkS4class{mcSettings}},  \code{\linkS4class{loocvSettings}},
+  \code{\linkS4class{bootSettings}}
 
 }
 \examples{
 ## Estimating several evaluation metrics on different variants of a
-## regression tree and of a SVM, on  two data sets, using one repetition of 10-fold CV
+## regression tree and of a SVM, on  two data sets, using one repetition
+## of 10-fold CV
 data(swiss)
 data(mtcars)
 

@@ -104,13 +104,15 @@ loocv(sys, ds, sets, itsInfo = F, verbose = F)
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 
 \seealso{
 \code{\link{experimentalComparison}},
-\code{\linkS4class{loocvRun}},\code{\linkS4class{loocvSettings}}, \code{\link{monteCarlo}}, \code{\link{holdOut}}, \code{\link{crossValidation}}, \code{\link{bootstrap}}
+\code{\linkS4class{loocvRun}},\code{\linkS4class{loocvSettings}},
+\code{\link{monteCarlo}},  \code{\link{holdOut}},
+\code{\link{crossValidation}},  \code{\link{bootstrap}}
 }
 \examples{
 ## Estimating the mean absolute error and the normalized mean squared

@@ -43,7 +43,7 @@ An object of call \code{tradeRecord} (see 'class?tradeRecord' for details)
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
@@ -57,20 +57,21 @@ An object of call \code{tradeRecord} (see 'class?tradeRecord' for details)
 ## First a trading policy function
 ## This function implements a strategy to trade on futures with
 ## long and short positions. Its main ideas are the following:
-## - all decisions are taken at the end of the day, that is, after
+## - all decisions aretaken at the end of the day, that is, after
 ## knowing all daily quotes of the current session.
-## - if at the end of day d our models issue a sell signal and  we currently do not
-## hold any opened position, we will open a short position by issuing a
-## sell order. When this order is carried out by the market at a price
-## pr sometime in the  future, we will immediately post two other
-## orders. The first is a buy limit order with a limit price of pr-p\%,
-## where p\% is a target profit margin.  We will wait 10 days for
-## this target to be reached. If the  order is not carried out by this
-## deadline, we will buy at the closing price of the 10th day. The
-## second order is a buy stop order with a price limit pr + l\%. This
-## order is placed with the goal of limiting our eventual losses with
-## this position. The order will be executed if the market reaches the
-## price pr + l\%, thus limiting our possible  losses to l\%. 
+## - if at the end of day d our models issue a sell signal and  we
+## currently  do not hold any opened position, we will open a short
+## position  by issuing a sell order. When this order is carried out  by
+## the market at a price  pr sometime in the  future, we will
+## immediately post two other orders. The first is a buy limit order
+## with  a limit price of pr - p\%, where p\% is a target profit margin.
+## We will wait 10 days for this target to be reached. If the  order  is
+## not carried out by this deadline, we will buy at the closing price
+## of  the 10th day. The second order is a buy stop order with a  price
+## limit  pr + l\%. This order is placed with the goal of limiting our
+## eventual  losses with this position. The order will be executed if
+## the  market reaches the price pr + l\%, thus limiting our possible
+## losses  to l\%.
 ## - if the end of the day signal is buy the strategy is more or less
 ## the inverse
 policy.1 <- function(signals,market,opened.pos,money,

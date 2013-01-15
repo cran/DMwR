@@ -47,7 +47,7 @@ which is associated to an identifier within a \code{compExp} object.
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \seealso{
 \code{\link{variants}}, \code{\link{experimentalComparison}}

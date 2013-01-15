@@ -159,7 +159,7 @@ outliers.ranking(data, test.data = NULL, method = "sizeDiff",
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 
   Torgo, L. (2007) : \emph{Resource-bounded Fraud Detection}, 
 in Progress in Artificial Intelligence, 13th Portuguese Conference on Artificial Intelligence, EPIA 2007, Neves et. al (eds.). LNAI, Springer.

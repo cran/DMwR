@@ -1,3 +1,14 @@
+VERSION 0.3.0 (2013-01-15)
+
+- Fixed problem with stratification in holdOut and crossValidation functions, occurying particularly on some regression problems, due to some empty buckets
+- Modified function regr.eval adding a new evaluation metric (MAPE - mean average percentage error), and also changing slightly the behaviour of the function when using the default parameter settings, namely, if the user uses the defaults in terms of metrics it will only try to compute the normalized metrics if the user supplies the train Y values.
+- Added a new function (class.eval) calculating a few standard evaluation metrics for classification tasks
+- Added a new function (classWF) that serves as a generic workflow function for classification predictive tasks, to be used with the experimental comparisons framework
+- Added a new function (regrWF) that serves as a generic workflow function for regression predictive tasks, to be used with the experimental comparisons framework
+- Small change in the output of leave one out cross validation (mostly cosmetic stuff)
+- Functions slidingWindowTesting() and growingWindowTesting() had serious errors and were removed. Similar functionalities can now be achieved through the new functions slideRegrWF(), growRegrWF(), slideClassWF() and growClassWF().
+- Slight cosmetic changes to the show methods of classes dataset and task.
+
 VERSION 0.2.3 (2012-03-20)
 
 - Fixed warnings in checking on Windows versions of R 2.15.0

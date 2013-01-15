@@ -1,18 +1,19 @@
-\name{regr.eval}
-\alias{regr.eval}
+\name{ts.eval}
+\alias{ts.eval}
 
 \title{
-Calculate Some Standard Regression Evaluation Statistics
+Calculate Some Standard  Evaluation Statistics for Time Series
+Forecasting Tasks
 }
 \description{
-This function is able to calculate a series of regression evaluation
+This function is able to calculate a series of numeric time series evaluation
 statistics given two vectors: one with the true target variable values,
 and the other with the predicted target variable values.
 }
 \usage{
-regr.eval(trues, preds,
+ts.eval(trues, preds,
           stats = if (is.null(train.y)) c("mae","mse","rmse","mape")
-                  else c("mae","mse","rmse","mape","nmse","nmae"),
+                  else c("mae","mse","rmse","mape","nmse","nmae","theil"),
           train.y = NULL)
 }
 
@@ -25,19 +26,19 @@ A numeric vector with the predicted values of the target variable.
 }
   \item{stats}{
 A vector with the names of the evaluation statistics to
-  calculate. Possible values are "mae", "mse", "rmse", "mape", "nmse" or
-  "nmae". The two latter require that the parameter \code{train.y}
+  calculate. Possible values are "mae", "mse", "rmse", "mape", "nmse",
+  "nmae" or "theil". The three latter require that the parameter \code{train.y}
   contains a numeric vector of target variable values (see below). 
 }
 \item{train.y}{
-  In case the set of statistics to calculate include either "nmse" or
-  "nmae", this parameter should contain a numeric vector with the values
+  In case the set of statistics to calculate include either "nmse",
+  "nmae" or "theil", this parameter should contain a numeric vector with the values
   of the target variable on the set of data used to obtain the model
   whose performance is being tested.
 }
 }
 \details{
-The regression evaluation statistics calculated by this function belong
+  The  evaluation statistics calculated by this function belong
   to two different groups of measures: absolute and relative. The former
   include "mae", "mse", and "rmse" and are calculated as follows:
 
@@ -50,18 +51,21 @@ The regression evaluation statistics calculated by this function belong
 
   "rmse": root mean squared error that is calculated as sqrt(mse)
 
-  The remaining measures ("mape", "nmse" and "nmae") are relative
-  measures, the two later
+  The remaining measures ("mape", "nmse", "nmae" and "theil") are relative
+  measures, the three later
   comparing the performance of the model with a baseline. They are
   unit-less measures with values always greater than 0. In the case of
-  "nmse" and "nmae" the values are expected to be in the interval [0,1]
+  "nmse", "nmae" and "theil" the values are expected to be in the interval [0,1]
   though occasionaly scores can overcome 1, which means that your model
   is performing worse than the baseline model. The baseline used in our
-  implementation is a constant model that always predicts the average
+  implementation for metrics "nmse" and "nmae" is a constant model that always predicts the average
   target variable value, estimated using the values of this variable on
   the training data (data used to obtain the model that generated the
   predictions), which should be 
-  given in the parameter \code{train.y}. The relative error measure
+  given in the parameter \code{train.y}. The baseline used for
+  calculating the Theil coefficient ("theil") is the model that predicts
+  for time t+1 the value of the time series on time t, i.e. the last
+  known value. The relative error measure
   "mape" does not require a baseline. It simply calculates the average
   percentage difference between the true values and the
   predictions.
@@ -75,6 +79,10 @@ The regression evaluation statistics calculated by this function belong
 
   "nmae": sum(|t_i - p_i|) / sum(|t_i - AVG(Y)|)
 
+  "theil": sum( (t_i - p_i)^2 ) / sum( (t_i - t_[i-1])^2 ), where
+  t_[i-1] is the last known value of the series when we are trying to
+  forecast the value t_i
+
 }
 \value{
 A named vector with the calculated statistics.
@@ -86,29 +94,22 @@ A named vector with the calculated statistics.
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 \note{
-In case you require either "nmse" or "nmae" to be calculated you must
+In case you require either "nmse", "nmae" or "theil" to be calculated you must
   supply a vector of numeric values through the parameter
   \code{train.y}, otherwise the function will return an error
-  message. The average of these values will be used as the baseline
-  model against which your model predictions will be compared to.
+  message. 
 }
 \seealso{
  \code{\link{class.eval}}
 }
 \examples{
-## Calculating several statistics of a regression tree on the Swiss data
-data(swiss)
-idx <- sample(1:nrow(swiss),as.integer(0.7*nrow(swiss)))
-train <- swiss[idx,]
-test <- swiss[-idx,]
-library(rpart)
-model <- rpart(Infant.Mortality ~ .,train)
-preds <- predict(model,test)
-## calculate mae and rmse
-regr.eval(test[,'Infant.Mortality'],preds,stats=c('mae','rmse'))
-## calculate all statistics
-regr.eval(test[,'Infant.Mortality'],preds,train.y=train[,'Infant.Mortality'])
-
+## A few example uses of the function
+tr <- rnorm(1000)
+true <- rnorm(50)
+preds <- rnorm(50)
+ts.eval(true,preds)
+ts.eval(true,preds,train.y=tr)
+ts.eval(true,preds,stats='theil',train.y=tr)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

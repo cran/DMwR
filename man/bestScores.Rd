@@ -46,7 +46,7 @@ bestScores(compRes, maxs = rep(F, dim(compRes@foldResults)[2]))
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 
@@ -55,7 +55,8 @@ bestScores(compRes, maxs = rep(F, dim(compRes@foldResults)[2]))
 }
 \examples{
 ## Estimating several evaluation metrics on different variants of a
-## regression tree and of a SVM, on  two data sets, using one repetition of 10-fold CV
+## regression tree and of a SVM, on  two data sets, using one repetition
+## of  10-fold CV
 data(swiss)
 data(mtcars)
 

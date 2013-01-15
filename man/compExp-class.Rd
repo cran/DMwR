@@ -56,7 +56,7 @@
 	 }
 }
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
-CRC Press (ISBN: 9781439810187). \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+CRC Press (ISBN: 9781439810187). \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 \seealso{

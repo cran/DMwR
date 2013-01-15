@@ -28,18 +28,21 @@ exportMethods(subset)
 export(
        # experiments.R file
        runLearner,
-       regr.eval,
+       regr.eval,class.eval,ts.eval,
        experimentalComparison,
        crossValidation, 
        monteCarlo,
        holdOut,
        loocv,
        bootstrap,
+       regrWF,classWF,
+       slideRegrWF,growRegrWF,tsRegrWF,
+       slideClassWF,growClassWF,tsClassWF,
        compAnalysis,
        bestScores, rankSystems, statScores,
        getFoldsResults,getSummaryResults,
        variants, getVariant,
-       slidingWindowTest, growingWindowTest,
+#       slidingWindowTest, growingWindowTest,
        join,
        dsNames, learnerNames, statNames,
        

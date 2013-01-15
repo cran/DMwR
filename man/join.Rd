@@ -56,12 +56,12 @@ The \code{compExp} class object names separated by commas
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 
 \seealso{
-\code{\link{experimentalComparison}}, \code{\linkS4class{compExp}},\code{\link[=subset,compExp-method]{subset}}, 
+\code{\link{experimentalComparison}}, \code{\linkS4class{compExp}}, \code{\link[=subset,compExp-method]{subset}}
 }
 \examples{
 ## Run some experiments with the swiss data and tow different prediction models
@@ -98,7 +98,8 @@ all <- join(exp1,exp2,by='variants')
 bestScores(all)   # check the best results
 
 ## an example including also subsetting
-bestScores(join(subset(exp1,stats='mae'),subset(exp2,stats='mae'),by='variants'))
+bestScores(join(subset(exp1,stats='mae'),subset(exp2,stats='mae'),
+                by='variants'))
 
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

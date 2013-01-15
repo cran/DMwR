@@ -89,8 +89,8 @@ task <- function(formula,data,name=NULL) {
 # show
 setMethod("show","task",
           function(object) {
-            cat('\nData Set:: ',object@name)
-            cat('\nFormula: ')
+            cat('\nTasl Name :: ',object@name)
+            cat('\nFormula   :: ')
             print(object@formula)
             cat('\n')
           }
@@ -139,10 +139,10 @@ dataset <- function(formula,data,name=NULL) {
 
 setMethod("show","dataset",
           function(object) {
-            cat('\nData Set:: ',object@name)
-            cat('\nFormula: ')
+            cat('\nTask Name :: ',object@name)
+            cat('\nFormula   :: ')
             print(object@formula)
-            cat('\nTask Data:\n\n')
+            cat('Task Data ::\n\n')
             str(object@data,give.attr=F)
             cat('\n')
           }

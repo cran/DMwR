@@ -93,7 +93,7 @@ compAnalysis(comp, against = dimnames(comp@foldResults)[[3]][1],
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 
@@ -125,7 +125,8 @@ results <- experimentalComparison(
 compAnalysis(results)
 
 ## Comparing against the learner with best NMSE, and only on that statistic
-compAnalysis(results,against=bestScores(results)$swiss['nmse','system'],stats='nmse')
+compAnalysis(results,against=bestScores(results)$swiss['nmse','system'],
+             stats='nmse')
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

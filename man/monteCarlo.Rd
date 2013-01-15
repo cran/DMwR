@@ -99,48 +99,43 @@ monteCarlo(learner, data.set, mcSet, itsInfo = F, verbose = T)
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}  
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}  
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 
 \seealso{
-\code{\link{experimentalComparison}}, \code{\linkS4class{mcRun}},\code{\linkS4class{mcSettings}}, \code{\link{slidingWindowTest}}, \code{\link{growingWindowTest}}, \code{\link{crossValidation}}, \code{\link{holdOut}}, \code{\link{loocv}}, \code{\link{bootstrap}}
+\code{\link{experimentalComparison}},
+\code{\linkS4class{mcRun}},\code{\linkS4class{mcSettings}},
+\code{\link{tsRegrWF}}, \code{\link{slideRegrWF}},
+\code{\link{growRegrWF}}, \code{\link{tsClassWF}},
+\code{\link{slideClassWF}}, \code{\link{growClassWF}},
+\code{\link{crossValidation}},  \code{\link{holdOut}},
+\code{\link{loocv}}, \code{\link{bootstrap}}
 }
 \examples{
-## The following is an example of a possible approach to a time series
-## problem, although in this case the used data is clearly not a time
-## series being selected only for illustration purposes
 
-data(swiss)
-
-
-## The base learner used in the experiment
-mc.rpartXse <- function(form, train, test, ...) {
-    model <- rpartXse(form, train, ...)
-    preds <- predict(model, test)
-    regr.eval(resp(form, test), preds,
-              stats=c('mae','nmse'), train.y=resp(form, train))
+## The following is a small illustrative example using the quotes of the
+## SP500 index. This example compares two random forests with 500
+## regression trees, one applyed in a standard way, and the other using
+## a growing window with a relearn step of every 5 days. The experiment
+## uses 10 repetitions of a train+test cycle using 50\% of the available
+## data for training and 25\% for testing.
+\dontrun{
+library(quantmod)
+getSymbols('^GSPC',from='2008-01-01',to='2012-12-31')
+data.model <- specifyModel(
+  Next(100*Delt(Ad(GSPC))) ~ Delt(Ad(GSPC),k=1:10)+Delt(Vo(GSPC),k=1:3))
+data <- as.data.frame(modelData(data.model))
+colnames(data)[1] <- 'PercVarClose'
+spExp <- experimentalComparison(
+  c(dataset(PercVarClose ~ .,data,'SP500_2012')),
+  c(standRF=learner('regrWF',pars=list(learner='randomForest',
+                                       ntree=500)),
+    growRF=learner('growRegrWF',pars=list(learner='randomForest',
+                                          ntree=500,relearn.step=5))),
+  mcSettings(10,0.5,0.25))
+summary(spExp)
 }
-
-## Estimate the MAE and NMSE of the learner rpartXse when asked to
-## obtain predictions for a test set with 10 observations given a
-## training set with 20 observations. The predictions for the 10
-## observations are obtained using a sliding window learn+test approach
-## (see the help of function slidingWindowTest() ) with a
-## model re-learning step of 5 observations.
-## Estimates are obtained by repeating 10 times the train+test process
-
-x <- monteCarlo(learner("slidingWindowTest",
-                      pars=list(learner=learner("mc.rpartXse",pars=list(se=1)),
-                                relearn.step=5
-                               )
-                        ),
-                      dataset(Infant.Mortality ~ ., swiss),
-                      mcSettings(10,20,10,1234)
-                 )
-
-summary(x)
-
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

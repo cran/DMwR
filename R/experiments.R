@@ -11,141 +11,6 @@
 
 
 #################################################################
-# General Stuff
-#################################################################
-
-
-# =====================================================
-# Function that can be used to call a learning system
-# whose information is stored in an object of class learner.
-# =====================================================
-# Luis Torgo, Fev 2009
-# =====================================================
-# Example run:
-# l  <- learner('nnet',pars=list(size=4,linout=T))
-# runLearner(l,medv ~ ., Boston)
-#
-runLearner <- function(l,...) {
-  if (!inherits(l,'learner')) stop(l,' is not of class "learner".')
-  do.call(l@func,c(list(...),l@pars))
-}
-
-
-
-
-
-#################################################################
-# Cross Validation Experiments
-#################################################################
-
-
-
-# =====================================================
-# Function that performs a cross validation experiment
-# of a system on a given data set.
-# The function is completely generic. The generality comes
-# from the fact that the function that the user provides
-# as the system to evaluate, needs in effect to be a
-# user-defined function that takes care of the learning,
-# testing and calculation of the statistics that the user
-# wants to estimate through cross validation. 
-# =====================================================
-# Luis Torgo, Jan 2009
-# =====================================================
-# Example runs:
-# x <- crossValidation(learner('cv.rpartXse',list(se=2)),
-#                      dataset(medv~.,Boston),
-#                      cvSettings(1,10,1234))
-#
-crossValidation <- function(sys,ds,sets,itsInfo=F) {
-
-  show(sets)
-
-  n <- nrow(ds@data)
-  n.each.part <- n %/% sets@cvFolds
-
-  itsI <- results <- NULL
-
-  if (sets@strat) {  # stratified sampling
-    respVals <- resp(ds@formula,ds@data)
-    regrProb <- is.numeric(respVals)
-    if (regrProb) {  # regression problem
-      # the bucket to which each case belongs  
-      b <- cut(respVals,10)  # this 10 should be parametrizable
-    } else {
-      b <- respVals
-    }
-    # how many on each bucket
-    bc <- table(b)
-    # how many should be on each test partition
-    bct <- bc %/% sets@cvFolds
-  }
-  
-  for(r in 1:sets@cvReps) {
-    cat('Repetition ',r,'\nFold:')
-
-    set.seed(sets@cvSeed*r)
-    permutation <- sample(n)
-    perm.data <- ds@data[permutation,]
-
-    for(i in seq(sets@cvFolds)) {
-      cat(' ',i)
-
-      if (sets@strat) {
-        out.fold <- c()
-        for(x in seq(along=levels(b))) 
-          out.fold <- c(out.fold,which(b == levels(b)[x])[((i-1)*bct[x]+1):((i-1)*bct[x]+bct[x])])
-      } else {
-        out.fold <- ((i-1)*n.each.part+1):(i*n.each.part)
-      }
-
-      it.res <- runLearner(sys,
-                           ds@formula,
-                           perm.data[-out.fold,],
-                           perm.data[out.fold,])
-
-      
-     if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
-     results <- rbind(results,it.res)
-      
-    }
-    cat('\n')
-  }
-  rownames(results) <- 1:nrow(results)
-  colnames(results) <- names(it.res)
-  
-  # randomize the number generator to avoid undesired
-  # problems caused by inner set.seed()'s
-  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
-
-  if (itsInfo) return(structure(cvRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
-  else         return(cvRun(sys,as(ds,'task'),sets,results))
-
-}
-
-
-# =====================================================================
-# Function to calculate some standard regression evaluation statistics
-# ---------------------------------------------------------------------
-# L. Torgo (2009)
-#
-# Examples:
-# s <- regr.eval(tr,ps,train.y=data[,'Y'])
-# s <- regr.eval(tr,ps,stats=c('mse','mae'))
-#
-regr.eval <- function(trues,preds,stats=c('mae','mse','rmse','nmse','nmae'),train.y=NULL) {
-  if (any(c('nmse','nmad') %in% stats) && is.null(train.y))
-    stop('regr.eval:: train.y parameter not specified.')
-  N <- length(trues)
-  sae <- sum(abs(trues-preds))
-  sse <- sum((trues-preds)^2)
-  r <- c(mae=sae/N,mse=sse/N,rmse=sqrt(sse/N))
-  if (!is.null(train.y)) r <- c(r,c(nmse=sse/sum((trues-mean(train.y))^2),nmae=sae/sum(abs(trues-mean(train.y)))))
-  return(r[stats])
-}
-
-
-#################################################################
 # GENERIC EXPERIMENTAL COMPARISONS
 #################################################################
 
@@ -266,49 +131,454 @@ experimentalComparison <- function(datasets,systems,setts) {
 }
 
 
+
+#################################################################
+# Cross Validation Experiments
+#################################################################
+
+
+
 # =====================================================
-# This function generates a named list of objects of class
-# learner.
-# It is used for easily generating a list of variants of
-# a learning system that is usable by the experimentalComparison()
-# function.
-# If you give only the learning system name it will generate
-# a learner wit the default parameters of that system.
-# The names of the components are generated automatically
-# and have the form <sys>-v<x> where <x> is an increasing
-# integer. In the case of using defaults the name is
-# <sys>-defaults
+# Function that performs a cross validation experiment
+# of a system on a given data set.
+# The function is completely generic. The generality comes
+# from the fact that the function that the user provides
+# as the system to evaluate, needs in effect to be a
+# user-defined function that takes care of the learning,
+# testing and calculation of the statistics that the user
+# wants to estimate through cross validation. 
 # =====================================================
 # Luis Torgo, Jan 2009
 # =====================================================
-# Example call:
-# ex1 <- variants('cv.rpartXse',se=c(0,0.5,1))
-# ex2 <- variants('nnet')
+# Example runs:
+# x <- crossValidation(learner('cv.rpartXse',list(se=2)),
+#                      dataset(medv~.,Boston),
+#                      cvSettings(1,10,1234))
 #
-variants <- function(sys,varsRootName=sys,...) {
-  nvars <- length(vars <- list(...))
+crossValidation <- function(sys,ds,sets,itsInfo=F) {
 
-  if (nvars == 0) {
-    l <- list(learner(sys,list()))
-    names(l) <- paste(sys,'.defaults',sep='')
-    return(l)
+  show(sets)
+
+  n <- nrow(ds@data)
+  n.each.part <- n %/% sets@cvFolds
+
+  itsI <- results <- NULL
+
+  if (sets@strat) {  # stratified sampling
+    respVals <- resp(ds@formula,ds@data)
+    regrProb <- is.numeric(respVals)
+    if (regrProb) {  # regression problem
+      # the bucket to which each case belongs  
+      b <- cut(respVals,10)  # this 10 should be parametrizable
+    } else {
+      b <- respVals
+    }
+    # how many on each bucket
+    bc <- table(b)
+    # how many should be on each test partition
+    bct <- bc %/% sets@cvFolds
+    # still missing (due to rounding effects of the previous statement)
+    #rem <- n.test-sum(bct)
+    #ib <- 1
+    #nb <- length(bct)
+    #while (rem) 
+    #  if (bct[ib] < bc[ib]) {
+    #    bct[ib] <- bct[ib]+1
+    #    rem <- rem-1
+    #    ib <- ib %% nb + 1
+    #  }
+
   }
-  vs <- list()
-  nvarsEach <- lapply(vars,length)
-  idxsEach <- lapply(nvarsEach,function(x) 1:x)
-  theVars <- expand.grid(idxsEach)
-  vs <- list()
-  for(i in 1:nrow(theVars)) {
-    varPars <- list()
-    for(k in 1:ncol(theVars))
-      varPars <- c(varPars,vars[[k]][theVars[i,k]])
-    names(varPars) <- names(vars)
-    vs <- c(vs,learner(sys,varPars))
+  
+  for(r in 1:sets@cvReps) {
+    cat('Repetition ',r,'\nFold:')
+
+    set.seed(sets@cvSeed*r)
+    permutation <- sample(n)
+    perm.data <- ds@data[permutation,]
+
+    for(i in seq(sets@cvFolds)) {
+      cat(' ',i)
+
+      if (sets@strat) {
+        out.fold <- c()
+        for(x in seq(along=levels(b))) 
+          if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[((i-1)*bct[x]+1):((i-1)*bct[x]+bct[x])])
+      } else {
+        out.fold <- ((i-1)*n.each.part+1):(i*n.each.part)
+      }
+
+      it.res <- runLearner(sys,
+                           ds@formula,
+                           perm.data[-out.fold,],
+                           perm.data[out.fold,])
+
+      
+     if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
+     results <- rbind(results,it.res)
+      
+    }
+    cat('\n')
   }
-  names(vs) <- paste(varsRootName,'.v',1:nrow(theVars),sep='')
-  vs
+  rownames(results) <- 1:nrow(results)
+  colnames(results) <- names(it.res)
+  
+  # randomize the number generator to avoid undesired
+  # problems caused by inner set.seed()'s
+  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
+
+  if (itsInfo) return(structure(cvRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
+  else         return(cvRun(sys,as(ds,'task'),sets,results))
+
 }
 
+
+#################################################################
+# Hold Out Experiments
+#################################################################
+
+
+
+# =====================================================
+# Function that performs a hold out experiment
+# of a system on a given data set.
+# The function is completely generic. The generality comes
+# from the fact that the function that the user provides
+# as the system to evaluate, needs in effect to be a
+# user-defined function that takes care of the learning,
+# testing and calculation of the statistics that the user
+# wants to estimate through hold out. A few example
+# functions are provided (cv.rpartXse, cv.lm, cv.nnet)
+# =====================================================
+# Luis Torgo, Feb 2010
+# =====================================================
+# Example runs:
+# x <- holdOut(learner('cv.rpartXse',list(se=2)),
+#              dataset(medv~.,Boston),
+#              hldSettings(4,0.25,1234))
+#
+holdOut <- function(sys,ds,sets,itsInfo=F) {
+
+  show(sets)
+
+  n <- nrow(ds@data)
+  n.test <- as.integer(n * sets@hldSz)
+
+  itsI <- results <- NULL
+  
+  if (sets@strat) {  # stratified sampling
+    respVals <- resp(ds@formula,ds@data)
+    regrProb <- is.numeric(respVals)
+    if (regrProb) {  # regression problem
+      # the bucket to which each case belongs  
+      b <- cut(respVals,10)  # this 10 should be parameterizable
+    } else {
+      b <- respVals
+    }
+    # how many on each bucket
+    bc <- table(b)
+    # how many should be on each test partition
+    bct <- as.integer(bc * sets@hldSz)
+    # still missing (due to rounding effects of the previous statement)
+    #rem <- n.test-sum(bct)
+    #ib <- 1
+    #nb <- length(bct)
+    #while (rem) 
+    #  if (bct[ib] < bc[ib]) {
+    #    bct[ib] <- bct[ib]+1
+    #    rem <- rem-1
+    #    ib <- ib %% nb + 1
+    #  }
+  }
+  
+  for(r in 1:sets@hldReps) {
+    cat('Repetition ',r)
+
+    set.seed(sets@hldSeed*r)
+    permutation <- sample(n)
+    perm.data <- ds@data[permutation,]
+
+    if (sets@strat) {
+      out.fold <- c()
+      for(x in seq(along=levels(b))) 
+        if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[1:bct[x]])
+    } else {
+      out.fold <- 1:n.test
+    }
+
+    it.res <- runLearner(sys,
+                         ds@formula,
+                         perm.data[-out.fold,],
+                         perm.data[out.fold,])
+    
+    if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
+    results <- rbind(results,it.res)
+      
+    cat('\n')
+  }
+  rownames(results) <- 1:nrow(results)
+  colnames(results) <- names(it.res)
+  
+  # randomize the number generator to avoid undesired
+  # problems caused by inner set.seed()'s
+  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
+
+  if (itsInfo) return(structure(hldRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
+  else         return(hldRun(sys,as(ds,'task'),sets,results))
+}
+
+
+
+
+
+#################################################################
+# Leave One Out Cross Validation (LOOCV) Experiments
+#################################################################
+
+
+
+# =====================================================
+# Function that performs a LOOCV experiment
+# of a system on a given data set.
+# The function is completely generic. The generality comes
+# from the fact that the function that the user provides
+# as the system to evaluate, needs in effect to be a
+# user-defined function that takes care of the learning,
+# testing and calculation of the statistics that the user
+# wants to estimate through hold out. 
+# =====================================================
+# Luis Torgo, Mar 2010
+# =====================================================
+# Example runs:
+# x <- loocv(learner('cv.rpartXse',list(se=2)),
+#            dataset(medv~.,Boston))
+#
+loocv <- function(sys,ds,sets,itsInfo=F,verbose=F) {
+
+  show(sets)
+
+  n <- nrow(ds@data)
+
+  itsI <- results <- NULL
+
+  if (verbose) cat('Iteration: ')
+  for(r in 1:n) {
+    if (verbose) cat('*')
+
+    set.seed(sets@loocvSeed*r)
+
+    it.res <- runLearner(sys,
+                         ds@formula,
+                         ds@data[-r,],
+                         ds@data[r,])
+    
+    if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
+    results <- rbind(results,it.res)
+      
+  }
+  if (verbose) cat('\n')
+  rownames(results) <- 1:nrow(results)
+  colnames(results) <- names(it.res)
+  
+
+  if (itsInfo) return(structure(loocvRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
+  else         return(loocvRun(sys,as(ds,'task'),sets,results))
+}
+
+
+
+
+#################################################################
+# Bootstrap Experiments
+#################################################################
+
+
+
+# =====================================================
+# Function that performs a bootstrap experiment
+# of a system on a given data set.
+# The function is completely generic. The generality comes
+# from the fact that the function that the user provides
+# as the system to evaluate, needs in effect to be a
+# user-defined function that takes care of the learning,
+# testing and calculation of the statistics that the user
+# wants to estimate through cross validation. 
+# =====================================================
+# Luis Torgo, Apr 2010
+# =====================================================
+# Example runs:
+# x <- bootstrap('cv.rpartXse',list(se=2)),
+#                      dataset(medv~.,Boston),
+#                      bootSettings(1234,10))
+#
+bootstrap <- function(sys,ds,sets,itsInfo=F,verbose=T) {
+
+  show(sets)
+
+  n <- nrow(ds@data)
+
+  itsI <- results <- NULL
+
+  if (verbose) cat('Repetition: ')
+  for(r in 1:sets@bootReps) {
+    if (verbose) cat(' ',r)
+
+    set.seed(sets@bootSeed*r)
+    idx <- sample(n,n,replace=T)
+    
+    it.res <- runLearner(sys,
+                         ds@formula,
+                         ds@data[idx,],
+                         ds@data[-idx,])
+
+    if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
+    results <- rbind(results,it.res)
+      
+  }
+  if (verbose) cat('\n')
+
+  rownames(results) <- 1:nrow(results)
+  colnames(results) <- names(it.res)
+  
+  # randomize the number generator to avoid undesired
+  # problems caused by inner set.seed()'s
+  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
+  
+  if (itsInfo) return(structure(bootRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
+  else         return(bootRun(sys,as(ds,'task'),sets,results))
+
+}
+
+
+
+#################################################################
+# Monte Carlo Experiments
+#################################################################
+
+
+
+# =====================================================
+# Function that performs a Monte Carlo experiment of a 
+# system on a given data set.
+# The function is completely generic. The generality comes
+# from the fact that the function that the user provides
+# as the system to evaluate, needs in effect to be a
+# user-defined function that takes care of the learning,
+# testing and calculation of the statistics that the user
+# wants to estimate through this experiment. A few example
+# functions are provided.
+# =====================================================
+# Luis Torgo, Aug 2009
+# =====================================================
+
+monteCarlo <- function(learner,
+                       data.set,
+                       mcSet,
+                       itsInfo=F,verbose=T) {
+
+  show(mcSet)
+  
+  itsI <- results <- NULL
+
+  n <- NROW(data.set@data)
+
+  train.size <- if (mcSet@mcTrain < 1) as.integer(n*mcSet@mcTrain) else mcSet@mcTrain
+  test.size <- if (mcSet@mcTest < 1) as.integer(n*mcSet@mcTest) else mcSet@mcTest
+  if (n-test.size+1 <= train.size+1) stop('monteCarlo:: Invalid train/test sizes.')
+  
+  set.seed(mcSet@mcSeed)
+  selection.range <- (train.size+1):(n-test.size+1)
+  starting.points <- sort(sample(selection.range,mcSet@mcReps))
+
+
+  # main loop over all repetitions
+  for(it in seq(along=starting.points)) {
+    start <- starting.points[it]
+
+    if (verbose)  cat('Repetition ',it,'\n\t start test = ',
+                      start,'; test size = ',test.size,'\n')
+
+    itDS <- dataset(data.set@formula,
+                    data.set@data[(start-train.size):(start+test.size-1),])
+    
+    rep.res <- runLearner(learner,
+                          data.set@formula,
+                          data.set@data[(start-train.size):(start-1),],
+                          data.set@data[start:(start+test.size-1),])
+
+    if (itsInfo && !is.null(tmp <- attr(rep.res,'itInfo'))) itsI <- c(itsI,tmp)
+    results <- rbind(results,rep.res)
+
+  }
+  if (verbose) cat('\n')
+  rownames(results) <- 1:nrow(results)
+
+  # randomize the number generator to avoid undesired
+  # problems caused by inner set.seed()'s
+  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
+
+  if (itsInfo) return(structure(mcRun(learner,as(data.set,'task'),mcSet,results),itsInfo=itsI))
+  else         return(mcRun(learner,as(data.set,'task'),mcSet,results))
+
+
+}
+
+
+
+
+
+#################################################################
+# Manipulation of the "compExps" objects
+#################################################################
+
+
+# =====================================================
+# Function that joins  experimental results objects.
+# The joining is carried out by some specified dimension,
+# the most common being joining experiments carried out in
+# different data sets (dimension 4), or experiments with
+# different learners (dimension 3) on the same data sets.
+# =====================================================
+# Luis Torgo, Aug 2009
+# =====================================================
+# Example runs:
+# > bestScores(join(subset(earth,stats='e1',vars=1:3),
+#                   subset(nnet,stats='e1',vars=4:6),by=3))
+# > bestScores(join(nnet,earth,rf,rpartXse,svm,by=3))
+#
+join <- function(...,by='datasets') {
+
+  s <- list(...)
+  if (length(s) < 2) return(s[1])
+  
+  if ((! by %in% c('iterations','statistics','variants','datasets')) &&
+      (! by %in% 1:4))
+    stop('join:: invalid value on "by" argument!')
+  for(i in 2:length(s)) 
+    if (!identical(s[[i]]@settings,s[[1]]@settings))
+      stop('join:: trying to join experimental comparisons with different settings!')
+
+  require(abind)
+  if (!is.numeric(by))
+    by <- match(by,c('iterations','statistics','variants','datasets'))
+
+  r <- s[[1]]
+  if (by == 3) for(i in 2:length(s)) r@learners <- c(r@learners,s[[i]]@learners)
+  if (by == 4) for(i in 2:length(s)) r@datasets <- c(r@datasets,s[[i]]@datasets)
+  for(i in 2:length(s))
+    r@foldResults <- abind(r@foldResults,s[[i]]@foldResults,along=by)
+  r
+}
+
+# =====================================================
+# Small auxiliary functions to obtain information from 
+# compExp objects.
+# =====================================================
+# Luis Torgo, Mar 2011
+# =====================================================
+dsNames      <- function(res) dimnames(res@foldResults)[[4]]
+learnerNames <- function(res) dimnames(res@foldResults)[[3]]
+statNames    <- function(res) dimnames(res@foldResults)[[2]]
 
 
 # =====================================================
@@ -430,24 +700,6 @@ statScores <- function(compRes,stat,summary='mean') {
   names(dss) <- dimnames(compRes@foldResults)[[4]]
   dss
 }
-
-# =====================================================
-# This function obtains the parameter settings associated
-# to a certain variant name in the context of the variants
-# of an experimental comparison
-# =====================================================
-# Luis Torgo, Jan 2009
-# =====================================================
-# Example Call:
-# > getVariant('cv.nnet-v6',cvResults)
-#
-# Note: The result of this can then be "run" as follows,
-# > runLearner(getVariant('cv.nnet-v6',cvResults),
-#              medv~.,Boston[1:100,],Boston[-(1:100),])
-#
-getVariant <- function(var,ExpsData) 
-  ExpsData@learners[[which(names(ExpsData@learners) == var)]]
-
 
 
 
@@ -578,98 +830,268 @@ getSummaryResults <- function(results,learner,dataSet) {
   
 
 
+
 #################################################################
-# Monte Carlo Experiments
+# Learners and Variants of Learners
 #################################################################
 
 
-
 # =====================================================
-# Function that performs a Monte Carlo experiment of a 
-# system on a given data set.
-# The function is completely generic. The generality comes
-# from the fact that the function that the user provides
-# as the system to evaluate, needs in effect to be a
-# user-defined function that takes care of the learning,
-# testing and calculation of the statistics that the user
-# wants to estimate through this experiment. A few example
-# functions are provided.
+# This function generates a named list of objects of class
+# learner.
+# It is used for easily generating a list of variants of
+# a learning system that is usable by the experimentalComparison()
+# function.
+# If you give only the learning system name it will generate
+# a learner wit the default parameters of that system.
+# The names of the components are generated automatically
+# and have the form <sys>-v<x> where <x> is an increasing
+# integer. In the case of using defaults the name is
+# <sys>-defaults
 # =====================================================
-# Luis Torgo, Aug 2009
+# Luis Torgo, Jan 2009
 # =====================================================
-# Example runs:
-# x <- monteCarlo(learner("slidingWindowTest",
-#                      pars=list(learner=learner("MC.rpartXse",pars=list(se=1)),
-#                                relearn.step=5
-#                               )
-#                        ),
-#                      dataset(medv~.,Boston),
-#                      mcSettings(10,100,100,1234)
-#                 )
+# Example call:
+# ex1 <- variants('cv.rpartXse',se=c(0,0.5,1))
+# ex2 <- variants('nnet')
+#
+variants <- function(sys,varsRootName=sys,...) {
+  nvars <- length(vars <- list(...))
 
-monteCarlo <- function(learner,
-                       data.set,
-                       mcSet,
-                       itsInfo=F,verbose=T) {
-
-  show(mcSet)
-  
-  itsI <- results <- NULL
-
-  n <- NROW(data.set@data)
-
-  train.size <- if (mcSet@mcTrain < 1) as.integer(n*mcSet@mcTrain) else mcSet@mcTrain
-  test.size <- if (mcSet@mcTest < 1) as.integer(n*mcSet@mcTest) else mcSet@mcTest
-  if (n-test.size+1 <= train.size+1) stop('monteCarlo:: Invalid train/test sizes.')
-  
-  set.seed(mcSet@mcSeed)
-  selection.range <- (train.size+1):(n-test.size+1)
-  starting.points <- sort(sample(selection.range,mcSet@mcReps))
-
-
-  # main loop over all repetitions
-  for(it in seq(along=starting.points)) {
-    start <- starting.points[it]
-
-    if (verbose)  cat('Repetition ',it,'\n\t start test = ',
-                      start,'; test size = ',test.size,'\n')
-
-    itDS <- dataset(data.set@formula,
-                    data.set@data[(start-train.size):(start+test.size-1),])
-    
-    rep.res <- runLearner(learner,
-                          data.set@formula,
-                          data.set@data[(start-train.size):(start-1),],
-                          data.set@data[start:(start+test.size-1),])
-
-    if (itsInfo && !is.null(tmp <- attr(rep.res,'itInfo'))) itsI <- c(itsI,tmp)
-    results <- rbind(results,rep.res)
-
+  if (nvars == 0) {
+    l <- list(learner(sys,list()))
+    names(l) <- paste(sys,'.defaults',sep='')
+    return(l)
   }
-  if (verbose) cat('\n')
-  rownames(results) <- 1:nrow(results)
+  vs <- list()
+  nvarsEach <- lapply(vars,length)
+  idxsEach <- lapply(nvarsEach,function(x) 1:x)
+  theVars <- expand.grid(idxsEach)
+  vs <- list()
+  for(i in 1:nrow(theVars)) {
+    varPars <- list()
+    for(k in 1:ncol(theVars))
+      varPars <- c(varPars,vars[[k]][theVars[i,k]])
+    names(varPars) <- names(vars)
+    vs <- c(vs,learner(sys,varPars))
+  }
+  names(vs) <- paste(varsRootName,'.v',1:nrow(theVars),sep='')
+  vs
+}
 
-  # randomize the number generator to avoid undesired
-  # problems caused by inner set.seed()'s
-  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
-
-  if (itsInfo) return(structure(mcRun(learner,as(data.set,'task'),mcSet,results),itsInfo=itsI))
-  else         return(mcRun(learner,as(data.set,'task'),mcSet,results))
 
 
+# =====================================================
+# This function obtains the parameter settings associated
+# to a certain variant name in the context of the variants
+# of an experimental comparison
+# =====================================================
+# Luis Torgo, Jan 2009
+# =====================================================
+# Example Call:
+# > getVariant('cv.nnet-v6',cvResults)
+#
+# Note: The result of this can then be "run" as follows,
+# > runLearner(getVariant('cv.nnet-v6',cvResults),
+#              medv~.,Boston[1:100,],Boston[-(1:100),])
+#
+getVariant <- function(var,ExpsData) 
+  ExpsData@learners[[which(names(ExpsData@learners) == var)]]
+
+
+
+# =====================================================
+# Function that can be used to call a learning system
+# whose information is stored in an object of class learner.
+# =====================================================
+# Luis Torgo, Fev 2009
+# =====================================================
+# Example run:
+# l  <- learner('nnet',pars=list(size=4,linout=T))
+# runLearner(l,medv ~ ., Boston)
+#
+runLearner <- function(l,...) {
+  if (!inherits(l,'learner')) stop(l,' is not of class "learner".')
+  do.call(l@func,c(list(...),l@pars))
 }
 
 
 
 
 #################################################################
-# Sliding and Growing Windows Approaches to Learn+Test a Model
+# General Stuff
 #################################################################
 
-slidingWindowTest <- function(learner,
-                               form,train,test,
-                               relearn.step=1,verbose=T) {
 
+
+# =====================================================================
+# Function to calculate some standard regression evaluation statistics
+# ---------------------------------------------------------------------
+# L. Torgo (2009)
+#
+# Examples:
+# s <- regr.eval(tr,ps,train.y=data[,'Y'])
+# s <- regr.eval(tr,ps,stats=c('mse','mae'))
+#
+regr.eval <- function(trues,preds,
+                      stats=if (is.null(train.y)) c('mae','mse','rmse','mape') else c('mae','mse','rmse','mape','nmse','nmae'),
+                      train.y=NULL)
+{
+  allSs <- c('mae','mse','rmse','mape','nmse','nmae')
+  if (any(c('nmse','nmad') %in% stats) && is.null(train.y))
+    stop('regr.eval:: train.y parameter not specified.',call.=F)
+  if (!all(stats %in% allSs))
+    stop("regr.eval:: don't know how to calculate -> ",call.=F,
+         paste(stats[which(!(stats %in% allSs))],collapse=','))
+  N <- length(trues)
+  sae <- sum(abs(trues-preds))
+  sse <- sum((trues-preds)^2)
+  r <- c(mae=sae/N,mse=sse/N,rmse=sqrt(sse/N),mape=sum(abs((trues-preds)/trues))/N)
+  if (!is.null(train.y)) r <- c(r,c(nmse=sse/sum((trues-mean(train.y))^2),nmae=sae/sum(abs(trues-mean(train.y)))))
+  return(r[stats])
+}
+
+# =====================================================================
+# Function to calculate some standard classification evaluation statistics
+# ---------------------------------------------------------------------
+# L. Torgo (2012)
+#
+# Examples:
+# s <- class.eval(tr,ps)
+# s <- class.eval(tr,ps,benMtrx=matrix(c(2,-13,-4,5),2,2))
+#
+class.eval <- function(trues,preds,
+                       stats=if (is.null(benMtrx)) c('acc','err') else c('acc','err','totU'),
+                       benMtrx=NULL,
+                       allCls=levels(factor(trues)))
+
+  {
+    preds <- factor(preds,levels=allCls)
+    trues <- factor(trues,levels=allCls)
+    allSs <- c('acc','err','totU')
+    if (any(c('totU') %in% stats) && is.null(benMtrx))
+      stop('class.eval:: benMtrx parameter not specified.',call.=F)
+    if (!all(stats %in% allSs))
+      stop("class.eval:: don't know how to calculate -> ",call.=F,
+           paste(stats[which(!(stats %in% allSs))],collapse=','))
+    N <- length(trues)
+    cm <- as.matrix(table(trues,preds))
+    a <- sum(diag(cm))/N
+    r <- c(acc=a,err=1-a)
+    if (!is.null(benMtrx))
+      if (!all(dim(cm)==dim(benMtrx)))
+        stop("class.eval:: dimensions of confusion and benefits metrices do not match",call.=F)
+      else r <- c(r,totU=sum(cm*benMtrx))
+    
+    return(r[stats])
+  }   
+
+
+# =====================================================================
+# Function to calculate some standard  evaluation statistics for time series
+# problems
+# ---------------------------------------------------------------------
+# L. Torgo (2013)
+#
+# Examples:
+# s <- ts.eval(tr,ps,train.y=data[,'Y'])
+# s <- ts.eval(tr,ps,stats=c('mse','mae'))
+#
+ts.eval <- function(trues,preds,
+                    stats=if (is.null(train.y)) c('mae','mse','rmse','mape') else c('mae','mse','rmse','mape','nmse','nmae','theil'),
+                    train.y=NULL)
+{
+  r <- if (!is.null(train.y))  c(regr.eval(trues,preds,setdiff(stats,'theil'),train.y),theil=sum((trues-preds)^2)/sum((c(train.y[length(train.y)],trues[-length(trues)])-preds)^2)) else regr.eval(trues,preds,setdiff(stats,'theil'),train.y)
+  return(r[stats])
+}
+
+
+
+#################################################################
+## Some simple work-flow functions for experimental comparisons
+## using some common algorithms for both classification and
+## regression tasks
+#################################################################
+
+
+#######################
+## Regression workflows
+
+.RegrStats <- c('mae','mse')  # the default evaluation metrics for regression
+.Regr <- list(rpartXse     = 'DMwR', 
+              svm          = 'e1071',
+              ksvm         = 'kernlab',
+              lm           = 'stats',
+              earth        = 'earth',
+              randomForest = 'randomForest',
+              bagging      = 'ipred',
+              gbm          = 'gbm',
+              nnet         = 'nnet'
+             )
+
+
+
+## =====================================================================
+## A function implementing a typical workflow for regression working
+## with different learners
+## ---------------------------------------------------------------------
+## L. Torgo (Dec, 2012)
+##
+regrWF <- function(form,train,test,learner,eval=.RegrStats,simpl=F,...) {
+  do.call('require',list(.Regr[[learner]],quietly=T))
+  
+  args <- list(...)
+  if (learner == 'lm') {
+    s.args <- which(names(args) %in% names(formals('step')))
+    if (length(s.args)) {
+      step.args <- args[s.args]
+      args <- args[-s.args]
+    }
+    m <- do.call(learner,c(list(form,train),args))
+    if (simpl) m <- if (length(s.args)) do.call('step',c(list(m,trace=0),step.args)) else step(m,trace=0)
+  } else  if (learner == 'nnet') {
+    if (!hasArg(linout)) m <- do.call(learner,c(list(form,train,linout=T),args))
+    else m <- do.call(learner,c(list(form,train),args))
+  } else  if (learner == 'gbm') {
+    if (!hasArg(distribution)) m <- do.call(learner,c(list(form,distribution='gaussian',data=train,verbose=F),args))
+    else m <- do.call(learner,c(list(form,data=train,verbose=F),args))
+  } else  m <- do.call(learner,c(list(form,train),args))
+
+  p <- if (learner == 'gbm')  predict(m,test,n.trees=m$n.trees) else predict(m,test)
+
+  regr.eval(resp(form,test),p,stats=eval,train.y=if(any(c('nmse','nmae') %in% eval)) resp(form,train) else NULL)
+}
+
+
+## =====================================================================
+## A function implementing a typical workflow for regression approaches
+## to time series forecasting using sliding window working  with different
+## learners
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+slideRegrWF <- function(...) tsRegrWF(type='slide',...)
+
+## =====================================================================
+## A function implementing a typical workflow for regression approaches
+## to time series forecasting using growing window working  with different
+## learners
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+growRegrWF <- function(...) tsRegrWF(type='grow',...)
+
+
+## =====================================================================
+## The workhorse function implementing sliding and growing window worflows
+## for regression techniques
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+tsRegrWF <- function(form,train,test,type,learner,eval=.RegrStats,simpl=F,relearn.step=1,verbose=T,...) {
+  do.call('require',list(.Regr[[learner]],quietly=T))
+  
+  args <- list(...)
   data <- rbind(train,test)
   n <- NROW(data)
   train.size <- NROW(train)
@@ -678,309 +1100,138 @@ slidingWindowTest <- function(learner,
   preds <- vector()
   for(s in sts) {
 
+    tr <- if (type=='slide') data[(s-train.size):(s-1),] else data[1:(s-1),]
+    ts <- data[s:min((s+relearn.step-1),n),]
+    
     if (verbose) cat('*')
 
-    ps <- runLearner(learner,
-                     form=form,
-                     train=data[(s-train.size):(s-1),],
-                     test=data[s:min((s+relearn.step-1),n),]
-                     )
+    if (learner == 'lm') {
+      s.args <- which(names(args) %in% names(formals('step')))
+      if (length(s.args)) {
+        step.args <- args[s.args]
+        args <- args[-s.args]
+      }
+      m <- do.call(learner,c(list(form,tr),args))
+      if (simpl) m <- if (length(s.args)) do.call('step',c(list(m,trace=0),step.args)) else step(m,trace=0)
+    } else  if (learner == 'nnet') {
+      if (!hasArg(linout)) m <- do.call(learner,c(list(form,tr,linout=T),args))
+      else m <- do.call(learner,c(list(form,tr),args))
+    } else  if (learner == 'gbm') {
+      if (!hasArg(distribution)) m <- do.call(learner,c(list(form,distribution='gaussian',data=tr,verbose=F),args))
+      else m <- do.call(learner,c(list(form,data=tr,verbose=F),args))
+    } else  m <- do.call(learner,c(list(form,tr),args))
+
+    ps <- if (learner == 'gbm')  predict(m,ts,n.trees=m$n.trees) else predict(m,ts)
 
     preds <- c(preds,ps)
   }
-
-  
   if (verbose) cat('\n')
-  if (is.factor(resp(form,train))) return(factor(preds,levels=1:3,labels=levels(resp(form,train)))) else return(preds)
+    
+  regr.eval(resp(form,test),preds,stats=eval,train.y=if(any(c('nmse','nmae') %in% eval)) resp(form,train) else NULL)
 }
 
 
-growingWindowTest <- function(learner,
-                               form,train,test,
-                               relearn.step=1,verbose=T) {
+###########################
+## Classification workflows
+
+.ClassStats <- c('err')  # the default evaluation metrics for classification
+.Class <- list(rpartXse     = 'DMwR', 
+               svm          = 'e1071',
+               ksvm         = 'kernlab',
+               lda          = 'MASS',
+               naiveBayes   = 'e1071',
+               kNN          = 'DMwR',
+               randomForest = 'randomForest',
+               bagging      = 'adabag',
+               boosting     = 'adabag',
+               C5.0         = 'C50',
+               nnet         = 'nnet'
+               )
+
+
+## =====================================================================
+## A function implementing a typical workflow for classification working
+## with different learners
+## ---------------------------------------------------------------------
+## L. Torgo (Dec, 2012)
+##
+classWF <- function(form,train,test,learner,eval=.ClassStats,...) {
+  do.call('require',list(.Class[[learner]],quietly=T))
+  
+  args <- list(...)
+  eval.args <- which(names(args) %in% names(formals(class.eval)))
+  learner.args <- if (length(eval.args)) args[-eval.args] else args
+
+  if (learner != 'kNN') {
+    
+    m <- do.call(learner,c(list(form,train),learner.args)) 
+  
+    p <- if (learner %in% c('rpartXse','nnet')) predict(m,test,type='class') else if (learner %in% c('lda','bagging','boosting')) predict(m,test)$class else predict(m,test)
+    
+  } else p <- do.call(learner,c(list(form,train,test),learner.args))
+  
+  do.call('class.eval',c(list(resp(form,test),p,stats=eval),args[eval.args]))
+}
+
+
+## =====================================================================
+## A function implementing a typical workflow for classification approaches
+## to time series forecasting using sliding window, working  with different
+## learners
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+slideClassWF <- function(...) tsClassWF(type='slide',...)
+
+## =====================================================================
+## A function implementing a typical workflow for regression approaches
+## to time series forecasting using growing window working  with different
+## learners
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+growClassWF <- function(...) tsClassWF(type='grow',...)
+
+
+## =====================================================================
+## The workhorse function implementing sliding and growing window worflows
+## for classification techniques
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+tsClassWF <- function(form,train,test,type,learner,eval=.ClassStats,relearn.step=1,verbose=T,...) {
+  do.call('require',list(.Class[[learner]],quietly=T))
+  
+  args <- list(...)
+  eval.args <- which(names(args) %in% names(formals(class.eval)))
+  learner.args <- if (length(eval.args)) args[-eval.args] else args
 
   data <- rbind(train,test)
   n <- NROW(data)
   train.size <- NROW(train)
   sts <- seq(train.size+1,n,by=relearn.step)
 
-  preds <- vector()
+  preds <- factor(rep('',NROW(test)),levels=levels(resp(form,data)))
+
   for(s in sts) {
 
+    tr <- if (type=='slide') data[(s-train.size):(s-1),] else data[1:(s-1),]
+    ts <- data[s:min((s+relearn.step-1),n),]
+    
     if (verbose) cat('*')
-
-    ps <- runLearner(learner,
-                     form=form,
-                     train=data[1:(s-1),],
-                     test=data[s:min((s+relearn.step-1),n),]
-                     )
-
-    preds <- c(preds,ps)
-  }
-
-  
-  if (verbose) cat('\n')
-  if (is.factor(resp(form,train))) return(factor(preds,levels=1:3,labels=levels(resp(form,train)))) else return(preds)
-
-}
-
-
-#################################################################
-# Manipulation of the "compExps" objects
-#################################################################
-
-# =====================================================
-# Function that joins  experimental results objects.
-# The joining is carried out by some specified dimension,
-# the most common being joining experiments carried out in
-# different data sets (dimension 4), or experiments with
-# different learners (dimension 3) on the same data sets.
-# =====================================================
-# Luis Torgo, Aug 2009
-# =====================================================
-# Example runs:
-# > bestScores(join(subset(earth,stats='e1',vars=1:3),
-#                   subset(nnet,stats='e1',vars=4:6),by=3))
-# > bestScores(join(nnet,earth,rf,rpartXse,svm,by=3))
-#
-join <- function(...,by='datasets') {
-
-  s <- list(...)
-  if (length(s) < 2) return(s[1])
-  
-  if ((! by %in% c('iterations','statistics','variants','datasets')) &&
-      (! by %in% 1:4))
-    stop('join:: invalid value on "by" argument!')
-  for(i in 2:length(s)) 
-    if (!identical(s[[i]]@settings,s[[1]]@settings))
-      stop('join:: trying to join experimental comparisons with different settings!')
-
-  require(abind)
-  if (!is.numeric(by))
-    by <- match(by,c('iterations','statistics','variants','datasets'))
-
-  r <- s[[1]]
-  if (by == 3) for(i in 2:length(s)) r@learners <- c(r@learners,s[[i]]@learners)
-  if (by == 4) for(i in 2:length(s)) r@datasets <- c(r@datasets,s[[i]]@datasets)
-  for(i in 2:length(s))
-    r@foldResults <- abind(r@foldResults,s[[i]]@foldResults,along=by)
-  r
-}
-
-# =====================================================
-# Small auxiliary functions to obtain information from 
-# compExp objects.
-# =====================================================
-# Luis Torgo, Mar 2011
-# =====================================================
-dsNames      <- function(res) dimnames(res@foldResults)[[4]]
-learnerNames <- function(res) dimnames(res@foldResults)[[3]]
-statNames    <- function(res) dimnames(res@foldResults)[[2]]
-
-
-#################################################################
-# Hold Out Experiments
-#################################################################
-
-
-
-# =====================================================
-# Function that performs a hold out experiment
-# of a system on a given data set.
-# The function is completely generic. The generality comes
-# from the fact that the function that the user provides
-# as the system to evaluate, needs in effect to be a
-# user-defined function that takes care of the learning,
-# testing and calculation of the statistics that the user
-# wants to estimate through hold out. A few example
-# functions are provided (cv.rpartXse, cv.lm, cv.nnet)
-# =====================================================
-# Luis Torgo, Feb 2010
-# =====================================================
-# Example runs:
-# x <- holdOut(learner('cv.rpartXse',list(se=2)),
-#              dataset(medv~.,Boston),
-#              hldSettings(4,0.25,1234))
-#
-holdOut <- function(sys,ds,sets,itsInfo=F) {
-
-  show(sets)
-
-  n <- nrow(ds@data)
-  n.test <- as.integer(n * sets@hldSz)
-
-  itsI <- results <- NULL
-  
-  if (sets@strat) {  # stratified sampling
-    respVals <- resp(ds@formula,ds@data)
-    regrProb <- is.numeric(respVals)
-    if (regrProb) {  # regression problem
-      # the bucket to which each case belongs  
-      b <- cut(respVals,10)  # this 10 should be parameterizable
-    } else {
-      b <- respVals
-    }
-    # how many on each bucket
-    bc <- table(b)
-    # how many should be on each test partition
-    bct <- as.integer(bc * sets@hldSz)
-  }
-  
-  for(r in 1:sets@hldReps) {
-    cat('Repetition ',r)
-
-    set.seed(sets@hldSeed*r)
-    permutation <- sample(n)
-    perm.data <- ds@data[permutation,]
-
-    if (sets@strat) {
-      out.fold <- c()
-      for(x in seq(along=levels(b))) 
-        out.fold <- c(out.fold,which(b == levels(b)[x])[1:bct[x]])
-    } else {
-      out.fold <- 1:n.test
-    }
-
-    it.res <- runLearner(sys,
-                         ds@formula,
-                         perm.data[-out.fold,],
-                         perm.data[out.fold,])
     
-    if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
-    results <- rbind(results,it.res)
+    if (learner != 'kNN') {
       
-    cat('\n')
-  }
-  rownames(results) <- 1:nrow(results)
-  colnames(results) <- names(it.res)
-  
-  # randomize the number generator to avoid undesired
-  # problems caused by inner set.seed()'s
-  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
-
-  if (itsInfo) return(structure(hldRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
-  else         return(hldRun(sys,as(ds,'task'),sets,results))
-}
-
-
-
-
-
-#################################################################
-# Leave One Out Cross Validation (LOOCV) Experiments
-#################################################################
-
-
-
-# =====================================================
-# Function that performs a LOOCV experiment
-# of a system on a given data set.
-# The function is completely generic. The generality comes
-# from the fact that the function that the user provides
-# as the system to evaluate, needs in effect to be a
-# user-defined function that takes care of the learning,
-# testing and calculation of the statistics that the user
-# wants to estimate through hold out. 
-# =====================================================
-# Luis Torgo, Mar 2010
-# =====================================================
-# Example runs:
-# x <- loocv(learner('cv.rpartXse',list(se=2)),
-#            dataset(medv~.,Boston))
-#
-loocv <- function(sys,ds,sets,itsInfo=F,verbose=F) {
-
-  show(sets)
-
-  n <- nrow(ds@data)
-
-  itsI <- results <- NULL
-
-  cat('Iteration: ')
-  for(r in 1:n) {
-    if (verbose) cat('*')
-
-    set.seed(sets@loocvSeed*r)
-
-    it.res <- runLearner(sys,
-                         ds@formula,
-                         ds@data[-r,],
-                         ds@data[r,])
-    
-    if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
-    results <- rbind(results,it.res)
+      m <- do.call(learner,c(list(form,tr),learner.args)) 
       
-  }
-  if (verbose) cat('\n')
-  rownames(results) <- 1:nrow(results)
-  colnames(results) <- names(it.res)
-  
-
-  if (itsInfo) return(structure(loocvRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
-  else         return(loocvRun(sys,as(ds,'task'),sets,results))
-}
-
-
-
-
-#################################################################
-# Bootstrap Experiments
-#################################################################
-
-
-
-# =====================================================
-# Function that performs a bootstrap experiment
-# of a system on a given data set.
-# The function is completely generic. The generality comes
-# from the fact that the function that the user provides
-# as the system to evaluate, needs in effect to be a
-# user-defined function that takes care of the learning,
-# testing and calculation of the statistics that the user
-# wants to estimate through cross validation. 
-# =====================================================
-# Luis Torgo, Apr 2010
-# =====================================================
-# Example runs:
-# x <- bootstrap('cv.rpartXse',list(se=2)),
-#                      dataset(medv~.,Boston),
-#                      bootSettings(1234,10))
-#
-bootstrap <- function(sys,ds,sets,itsInfo=F,verbose=T) {
-
-  show(sets)
-
-  n <- nrow(ds@data)
-
-  itsI <- results <- NULL
-
-  if (verbose) cat('Repetition: ')
-  for(r in 1:sets@bootReps) {
-    if (verbose) cat(' ',r)
-
-    set.seed(sets@bootSeed*r)
-    idx <- sample(n,n,replace=T)
-    
-    it.res <- runLearner(sys,
-                         ds@formula,
-                         ds@data[idx,],
-                         ds@data[-idx,])
-
-    if (itsInfo && !is.null(tmp <- attr(it.res,'itInfo'))) itsI <- c(itsI,tmp)
-    results <- rbind(results,it.res)
+      ps <- if (learner %in% c('rpartXse','nnet')) predict(m,ts,type='class') else if (learner %in% c('lda','boosting')) predict(m,ts)$class else predict(m,ts)
       
+    } else ps <- do.call(learner,c(list(form,tr,ts),learner.args))
+
+    preds[(s-sts[1]+1):(s-sts[1]+length(ps))] <- ps
   }
   if (verbose) cat('\n')
 
-  rownames(results) <- 1:nrow(results)
-  colnames(results) <- names(it.res)
-  
-  # randomize the number generator to avoid undesired
-  # problems caused by inner set.seed()'s
-  set.seed(prod(as.integer(unlist(strsplit(strsplit(date()," ")[[1]][4],":")))))
-  
-  if (itsInfo) return(structure(bootRun(sys,as(ds,'task'),sets,results),itsInfo=itsI))
-  else         return(bootRun(sys,as(ds,'task'),sets,results))
-
+  do.call('class.eval',c(list(resp(form,test),preds,stats=eval),args[eval.args]))
 }
 

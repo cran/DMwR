@@ -113,7 +113,7 @@ This function returns a classification model. This will be an object of
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
 
-  \url{http://www.liaad.up.pt/~ltorgo/DataMiningWithR}
+  \url{http://www.dcc.fc.up.pt/~ltorgo/DataMiningWithR}
 
   Yarowski, D. (1995). \emph{Unsupervised word sense disambiguation
   rivaling supervised methods}. In Proceedings of the 33rd Annual
