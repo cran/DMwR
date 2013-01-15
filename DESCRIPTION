@@ -1,7 +1,7 @@
 Package: DMwR
 Type: Package
 Title: Functions and data for "Data Mining with R"
-Version: 0.3.0
+Version: 0.3.1
 Depends: R(>= 2.10), methods, graphics, xts (>= 0.6-7), quantmod (>=
         0.3-8), ROCR (>= 1.0-2), class (>= 7.3-1), rpart (>= 3.1-46),
         abind (>= 1.1-0), cluster (>= 1.12.1), lattice (>= 0.18-3),
@@ -15,6 +15,7 @@ Description: This package includes functions and data accompanying the
 License: GPL (>= 2)
 LazyLoad: yes
 LazyData: yes
-Packaged: 2013-01-15 15:40:36 UTC; ltorgo
+Packaged: 2013-03-22 10:06:27 UTC; ltorgo
+NeedsCompilation: no
 Repository: CRAN
-Date/Publication: 2013-01-15 18:04:13
+Date/Publication: 2013-03-22 11:28:05

@@ -15,7 +15,7 @@ comparisons among learning systems, where we may actually be interested
 in comparing different parameter settings for each of them.
 }
 \usage{
-variants(sys, varsRootName = sys, ...)
+variants(sys, varsRootName = sys, as.is=NULL, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -27,6 +27,13 @@ learner from which variants should be generated.
 By default the names given to each variant will be formed by
 concatenating the base name of the learner with the terminations: ".v1",
 ".v2", and so on. This parameter allows you to supply a different base name.
+}
+  \item{as.is}{
+This is a vector of parameter names (defaults to \code{NULL} that are
+not to be used as source for system variants. This is useful for systems
+that have parameters that accept as "legal" values sets (e.g. a vector)
+and that we do not want the function \code{variants} to interprete as
+source values for generating different system variants.
 }
   \item{\dots}{
 The function then accepts any number of named arguments, each with a set

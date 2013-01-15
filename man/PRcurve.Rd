@@ -6,7 +6,7 @@ Plot a Precision/Recall curve
 }
 \description{
   Precision/recall (PR) curves are visual representations of the performance
-of a classifcation model in terms of the precision and recall
+of a classification model in terms of the precision and recall
 statistics. The curves are obtained by proper interpolation of the
 values of the statistics at different working points. These working
 points can be given by different cut-off limits on a ranking of the

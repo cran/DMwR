@@ -1,14 +1,14 @@
-\name{tsRegrWF}
-\alias{tsRegrWF}
+\name{timeseriesWF}
+\alias{timeseriesWF}
 
 \title{
-  A function implementing sliding and growing window workflows for numeric time series
+  A function implementing sliding and growing window workflows for time series
   forecasting tasks
 }
 \description{
-  This function implements sliding and growing window workflows for the prediction of
-  numeric time series. The sliding window workflow consists of: (i) starting by
-  learning a regression model based on the given training set, (ii) use
+  This function implements sliding and growing window workflows for the
+  prediction of both nominal and numerical time series. The sliding window workflow consists of: (i) starting by
+  learning a prediction model based on the given training set, (ii) use
   this model to obtain predictions for a pre-defined number of future
   time steps; (iii) then  slide the training window forward this
   pre-defined number of steps and obtain a new model with this new
@@ -22,9 +22,13 @@
   the training set till the current time step. 
 }
 \usage{
-tsRegrWF(form,train,test,
-         type,learner,eval=.RegrStats,
-         simpl=F,relearn.step=1,verbose=T,...)
+timeseriesWF(form,train,test,
+             learner,learner.pars=NULL,
+             type='slide',relearn.step=1,
+             predictor='predict',predictor.pars=NULL,
+             evaluator=if (is.factor(resp(form,train))) 'class.eval' else 'ts.eval',
+             evaluator.pars=NULL,
+             verbose=T)
 }
 
 \arguments{
@@ -33,52 +37,57 @@ tsRegrWF(form,train,test,
   }
   \item{train}{
     A data frame containing the data set to be used for obtaining the
-    first regression model. In case we are using the sliding window
+    first prediction model. In case we are using the sliding window
   approach, the size of this training set will determine the size of all
   future  training sets after each slide step.
   }
   \item{test}{
     A data frame containing the data set for which we want predictions.
   }
+  \item{learner}{
+    A character string with the name of a function that is to be used to
+  obtain the prediction models.
+  }
+  \item{learner.pars}{
+    A list of parameter values to be passed to the learner (defaults to \code{NULL}).
+  }
   \item{type}{
     A character string specifying if we are using a sliding (value
-    'slide') or a growing (value 'grow') window workflow. 
-  }
-  \item{learner}{
-    A character string containing the name of regression algorithm
-    to use to obtain the predictions (see the Details section for the models currently available).
-  }
-  \item{eval}{
-    A vector of character strings of the metrics that are to be
-    calculated using the predictions of the obtained model. The allowed
-    metrics are the ones available in function \code{\link{ts.eval}}
-  (defaults to mean absolute error - "mae", and mean squared error - "mse")
-  }
-  \item{simpl}{
-    This parameter is only used if the regression algorithm to be used
-    is a linear regression model (\code{learner} = "lm"), and it is a
-    logical indicating whether the resulting linear models should be
-    simplified using the \code{step} function (defaults to \code{TRUE}).
+    'slide') or a growing (value 'grow') window workflow (defaults to 'slide'). 
   }
   \item{relearn.step}{
     The number of time steps (translated into number of rows in the test
     set) after which a new model is re-learned (either by sliding or
     growing the training window) (defaults to 1, i.e. each new row).
   }
+  \item{predictor}{
+    A character string with the name of a function that is to be used to
+  obtain the predictions for the test set using the obtained model
+  (defaults to 'predict').
+  }
+  \item{predictor.pars}{
+    A list of parameter values to be passed to the predictor (defaults
+  to \code{NULL}).
+  }
+  \item{evaluator}{
+    A character string with the name of a function that is to be used to
+  obtain the evaluation metrics for the predictions of the model (if the
+  target is a factor defaults to 'class.eval' else to 'ts.eval').
+  }
+  \item{evaluator.pars}{
+    A list of parameter values to be passed to the evaluator (defaults
+  to \code{NULL}).
+  }
   \item{verbose}{
     A Boolean indicating whether a "*" character should be printed every
     time the window slides (defaults to TRUE).
-  }
-  \item{...}{
-    Any extra arguments that will be passed to  the selected
-    regression algorithm.
   }
 }
 \details{
   The main goal of this function is to facilitate the task of the users
   of the experimental comparison infra-structure provided by function
   \code{\link{experimentalComparison}} for time series problems where
-  the target variable is numeric. This latter function requires
+  the target variable can be numeric or nominal. This latter function requires
   the user to write down a function implementing each of the workflows
   to be evaluated/compared by the infra-structure through a Monte Carlo
   simulation process, which is the experimental methodology recommended
@@ -86,7 +95,7 @@ tsRegrWF(form,train,test,
   just want to compare existing algorithms or variants of these algorithms on a
   set of forecasting tasks, using some standard  error
   metrics. In these situations, it may be tedious  having to write these
-  functions. The goal of the \code{tsRegrWF} function is to facilitate
+  functions. The goal of the \code{timeseriesWF} function is to facilitate
   this task.
 
   We have considered two typical workflow approaches for time series
@@ -108,10 +117,10 @@ tsRegrWF(form,train,test,
   if we suspect that there is some kind of concept drift on our
   data. For stationary data this makes no sense and we would be better
   off using the workflow provided by function
-  \code{\link{regrWF}}. Still, the current function implements two
+  \code{\link{standardWF}}. Still, the current function implements two
   workflows following this model-updating reasoning: (i) sliding window;
   and (ii) growing window. Both have as user-defined parameter
-  (\code{relearn.step}) a number of time periods after which we re-learn
+  (\code{relearn.step}) the number of time periods after which we re-learn
   the model using fresh new data. The difference between them lies on
   how they treat the oldest data (the initial rows of the provided
   training set). Sliding window, as the name suggests, after each
@@ -120,41 +129,48 @@ tsRegrWF(form,train,test,
   recent observations. With this approach all models are obtained with a
   training set with the same amount of data (the number of rows of the
   initially given training set). Growing window does not remove older
-  rows and thus the training sets keep growing in size.
+  rows and thus the training sets keep growing in size after each
+  relearn step.
 
   Independently of the process used to obtain the predictions for the
-  test set, these are based on a prediction model. Through parameter \code{learner} users may indicate the regression
-  algorithm to use to obtain this model. The currently available options are:
+  test set, these are based on a prediction model. Through parameter
+  \code{learner} users may indicate the modeling algorithm to use to
+  obtain this model. This can be any  R function, provided it can be
+  called with a formula on the first argument and a training set on the
+  second (as most R modeling functions do). As usual, these functions
+  may include other arguments that are specific to the modeling approach
+  (i.e. are parameters of the model). The values to be used for these
+  parameters are specified as a list through the parameter
+  \code{learner.pars} of function \code{timeseriesWF}. The learning
+  function can return any class of object that represents the learned
+  model. This object will be used to  obtain the predictions.
 
-  "rpartXse": a regression tree available on package \pkg{DMwR}
-  based on the functions provided by package \pkg{rpart}.
+  Equivalently, the user may specify a function for obtaining the
+  predictions for the test set using the previously learned model. Again
+  this can be any function, and it is indicated in parameter
+  \code{predictor} (defaulting to the usual \code{predict}
+  function). This function should be prepared to accept in the first
+  argument the learned model and in the second the test set, and should
+  return the predictions of the model for this set of data. It may also
+  have additional parameters whose values are specified as a list in
+  parameter \code{predictor.pars}.
 
-  "svm": a support vector machine provided by function \code{svm} of
-  package \pkg{e1071}.
-
-  "ksvm": another support vector machine provided by function \code{ksvm} of
-  package \pkg{kernlab}.
-
-  "lm": a multiple linear regression model provided by function \code{lm} of
-  package \pkg{stats}.
-
-  "earth": a multivariate adaptive regression splines model provided by function \code{earth} of
-  package \pkg{earth}.
-
-  "randomForest": a random forest provided by function \code{randomForest} of
-  package \pkg{randomForest}.
-
-  "bagging": bagging provided by function \code{bagging} of
-  package \pkg{ipred}.
-
-  "gbm": a gradient boosting machine provided by function \code{gbm} of
-  package \pkg{gbm}.
-
-  "nnet": provided by function \code{nnet} of
-  package \pkg{nnet}.
+  Finally, the user may also specify a function that is to be used to
+  obtain evaluation metrics using the predictions and true values of the
+  test set. This can be any function which is specified through
+  parameter \code{evaluator} (defaulting to \code{\link{class.eval}} for
+  nominal target variables and \code{\link{ts.eval}} for numeric
+  targets). The function will be called with the true values on the
+  first argument and the predictions  on the
+  second. Further arguments are supplied next, as specified in the
+  parameter \code{evaluator.pars} that should be a list of the values of
+  these extra parameters of the evaluation function. The result of this
+  evaluator function should be a named vector of the evaluation metrics,
+  which will be the result returned by function \code{timeseriesWF}.
 }
 \value{
-  A named vector with the calculated statistics as returned by function \code{\link{ts.eval}}.
+  A named vector with the calculated statistics as returned by the
+  function specified in parameter \code{evaluator}.
 }
 \references{ Torgo, L. (2010) \emph{Data Mining using R: learning with case studies},
   CRC Press (ISBN: 9781439810187).
@@ -163,13 +179,12 @@ tsRegrWF(form,train,test,
 }
 \author{ Luis Torgo \email{ltorgo@dcc.fc.up.pt} }
 \note{
-  In order to use any of the available regression algorithms you must
-  have previously installed the respective packages if necessary.
+  You may find extra information and an extensive set of examples in a
+  PDF file accompanying the package \code{DMwR}.
 }
 \seealso{
- \code{\link{growRegrWF}}, \code{\link{slideRegrWF}},
- \code{\link{tsClassWF}},  \code{\link{experimentalComparison}},
- \code{\link{growClassWF}},  \code{\link{slideClassWF}}, \code{\link{classWF}}
+ \code{\link{standardWF}},  \code{\link{experimentalComparison}},
+ \code{\link{class.eval}},  \code{\link{ts.eval}}
 }
 \examples{
 
@@ -181,18 +196,19 @@ tsRegrWF(form,train,test,
 ## data for training and 25\% for testing.
 \dontrun{
 library(quantmod)
+library(e1071)
 getSymbols('^GSPC',from='2008-01-01',to='2012-12-31')
 data.model <- specifyModel(
   Next(100*Delt(Ad(GSPC))) ~ Delt(Ad(GSPC),k=1:10)+Delt(Vo(GSPC),k=1:3))
 data <- as.data.frame(modelData(data.model))
 colnames(data)[1] <- 'PercVarClose'
 spExp <- experimentalComparison(
-  c(dataset(PercVarClose ~ .,data,'SP500_2012')),
-  c(standRF=learner('regrWF',pars=list(learner='randomForest',
-                                       ntree=500)),
-    growRF=learner('tsRegrWF',pars=list(type='grow',learner='randomForest',
-                                            ntree=500,relearn.step=5))),
-  mcSettings(10,0.5,0.25))
+  c(dataset(PercVarClose ~ .,data,'SP500_2008_2012')),
+  variants('timeseriesWF',
+           learner='svm',learner.pars=list(cost=10),
+           type=c('slide','grow'),relearn.step=200,
+           evaluator.pars=list(stats='nmse')),
+  mcSettings(5,0.5,0.25))
 }
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

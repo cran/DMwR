@@ -165,15 +165,21 @@ setClass("cvSettings",
          representation(cvReps='numeric',  # nr. of repetitions
                         cvFolds='numeric', # nr. of folds of each rep.
                         cvSeed='numeric',  # seed of the random generator
-                        strat='logical')   # is the sampling stratified?
+                        strat='logical',   # is the sampling stratified?
+                        dataSplits='data.frame') # user supplied data splits
          )
 
 
 # --------------------------------------------------------------
 # constructor function
-cvSettings <- function(r=1,f=10,s=1234,st=F) 
-  new("cvSettings",cvReps=r,cvFolds=f,cvSeed=s,strat=st)
-
+cvSettings <- function(r=1,f=10,s=1234,st=F,ds=NULL) {
+  if (is.null(ds))
+    new("cvSettings",cvReps=r,cvFolds=f,cvSeed=s,strat=st,dataSplits=data.frame())
+  else {
+    si <- apply(ds[,3:4],2,max)
+    new("cvSettings",cvReps=si[2],cvFolds=si[1],cvSeed=s,strat=st,dataSplits=ds)
+  }
+}
 
 
 # --------------------------------------------------------------
@@ -183,11 +189,15 @@ cvSettings <- function(r=1,f=10,s=1234,st=F)
 # show
 setMethod("show","cvSettings",
           function(object) {
-           cat(ifelse(object@strat,'\n Stratified ','\n'),
-               object@cvReps,'x',object@cvFolds,
-               '- Fold Cross Validation run with seed = ',
-               object@cvSeed,'\n')
-         })
+            userSplit <- all(dim(object@dataSplits) != 0)
+            cat(ifelse(!userSplit & object@strat,'\n Stratified ','\n'),
+                object@cvReps,'x',object@cvFolds,
+                '- Fold Cross Validation')
+            if (!userSplit)
+              cat(' run with seed = ', object@cvSeed,'\n')
+            else
+              cat('\n   User-supplied data splits\n')
+          })
 
 
 
@@ -301,14 +311,22 @@ setClass("hldSettings",
          representation(hldReps='numeric', # number of repetitions
                         hldSz='numeric',   # the size (0..1) of the holdout
                         hldSeed='numeric', # the random number seed
-                        strat='logical')   # is the sampling stratified?
+                        strat='logical',   # is the sampling stratified?
+                        dataSplits='data.frame') # user supplied data splits
          )
 
 
 # --------------------------------------------------------------
 # constructor function
-hldSettings <- function(r=1,sz=0.3,s=1234,str=F) 
-  new("hldSettings",hldReps=r,hldSz=sz,hldSeed=s,strat=str)
+hldSettings <- function(r=1,sz=0.3,s=1234,str=F,ds=NULL) {
+  if (is.null(ds)) 
+    new("hldSettings",hldReps=r,hldSz=sz,hldSeed=s,strat=str,dataSplits=data.frame())
+  else {
+    new("hldSettings",hldReps=max(ds[,4]),
+        hldSz=ds[ds$type=='TEST' & ds$fold==1,],
+        hldSeed=s,strat=str,dataSplits=ds)
+  }
+}
 
 
 
@@ -319,12 +337,15 @@ hldSettings <- function(r=1,sz=0.3,s=1234,str=F)
 # show
 setMethod("show","hldSettings",
           function(object) {
-           cat(ifelse(object@strat,'\n Stratified ','\n'),
-               object@hldReps,'x',
-               100*(1-object@hldSz),'%/',100*object@hldSz,
-               '% Holdout run with seed = ',
-               object@hldSeed,'\n')
-         })
+            userSplit <- all(dim(object@dataSplits) != 0)
+            cat(ifelse(!userSplit & object@strat,'\n Stratified ','\n'),
+                object@hldReps,'x',
+                100*(1-object@hldSz),'%/',100*object@hldSz,'% Holdout')
+            if (!userSplit)
+              cat(' run with seed = ',object@hldSeed,'\n')
+            else
+              cat('\n   User-supplied data splits\n')
+          })
 
 
 # ==============================================================
@@ -541,14 +562,19 @@ summary.loocvRun <- function(object,...) {
 # class def
 setClass("bootSettings",
          representation(bootSeed='numeric',  # seed of the random generator
-                        bootReps='numeric') # number of repetitions
+                        bootReps='numeric',  # number of repetitions
+                        dataSplits='data.frame') # user supplied data splits
          )
 
 
 # --------------------------------------------------------------
 # constructor function
-bootSettings <- function(seed=1234,nreps=50)
-  new("bootSettings",bootSeed=seed,bootReps=nreps)
+bootSettings <- function(seed=1234,nreps=50,ds=NULL) {
+  if (is.null(ds))
+    new("bootSettings",bootSeed=seed,bootReps=nreps,dataSplits=data.frame())
+  else
+    new("bootSettings",bootSeed=seed,bootReps=max(ds[,4]),dataSplits=ds)
+}
 
 
 
@@ -559,8 +585,10 @@ bootSettings <- function(seed=1234,nreps=50)
 # show
 setMethod("show","bootSettings",
           function(object) {
-           cat('\n Bootstrap experiment settings\n\t Seed = ',
-               object@bootSeed,'\n\t Nr. repetitions = ',object@bootReps,'\n')
+            cat('\n Bootstrap experiment settings\n\t Seed = ',
+                object@bootSeed,'\n\t Nr. repetitions = ',object@bootReps,'\n')
+            if (all(dim(object@dataSplits) != 0))
+              cat('\n   User-supplied data splits\n')
          })
 
 
@@ -633,15 +661,20 @@ summary.bootRun <- function(object,...) {
 setClass("mcSettings",
          representation(mcReps='numeric',
                         mcTrain='numeric',mcTest='numeric',
-                        mcSeed='numeric')
+                        mcSeed='numeric',
+                        dataSplits='data.frame')
          )
 
 
 # --------------------------------------------------------------
 # constructor function
-mcSettings <- function(r=10,tr=0.25,ts=0.25,s=1234)
-  new("mcSettings",mcReps=r,mcTrain=tr,mcTest=ts,mcSeed=s)
-
+mcSettings <- function(r=10,tr=0.25,ts=0.25,s=1234,ds=NULL)
+  if (is.null(ds)) {
+    new("mcSettings",mcReps=r,mcTrain=tr,mcTest=ts,mcSeed=s)
+  } else {
+    new("mcSettings",mcReps=max(ds[,4]),
+        mcTrain=tr,mcTest=ts,mcSeed=s,dataSplits=ds)
+  }
 
 
 # --------------------------------------------------------------
@@ -651,15 +684,21 @@ mcSettings <- function(r=10,tr=0.25,ts=0.25,s=1234)
 # show
 setMethod("show","mcSettings",
           function(object) {
-           cat('\n',object@mcReps,
-               ' repetitions Monte Carlo Simulation using:',
-               '\n\t seed = ', object@mcSeed,
-               '\n\t train size = ',object@mcTrain,
-               ifelse(object@mcTrain<1,'x NROW(DataSet)',' cases'),
-               '\n\t test size = ',object@mcTest,
-               ifelse(object@mcTest<1,'x NROW(DataSet)',' cases'),
-               '\n'
-               )
+            userSplit <- all(dim(object@dataSplits) != 0)
+            cat('\n',object@mcReps,
+               ' repetitions Monte Carlo Simulation')
+            if (userSplit) {
+              cat(' using user-supplied data splits\n')
+            } else {
+              cat(' using:',
+                  '\n\t seed = ', object@mcSeed,
+                  '\n\t train size = ',object@mcTrain,
+                  ifelse(object@mcTrain<1,'x NROW(DataSet)',' cases'),
+                  '\n\t test size = ',object@mcTest,
+                  ifelse(object@mcTest<1,'x NROW(DataSet)',' cases'),
+                  '\n'
+                  )
+            }
          })
 
 

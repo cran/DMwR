@@ -72,6 +72,9 @@
 #
 experimentalComparison <- function(datasets,systems,setts) {
   require(abind,quietly=T)
+
+  if (!is(datasets,'list')) datasets <- list(datasets)
+  if (!is(systems,'list')) systems <- list(systems)
   
   if (is.null(names(systems)))
     names(systems) <- paste('var',1:length(systems),sep='.')
@@ -159,12 +162,15 @@ crossValidation <- function(sys,ds,sets,itsInfo=F) {
 
   show(sets)
 
+  ## Did the user supplied the data splits for all folds and repetitions?
+  userSplit <- all(dim(sets@dataSplits) != 0)
+  
   n <- nrow(ds@data)
-  n.each.part <- n %/% sets@cvFolds
+  if (!userSplit) n.each.part <- n %/% sets@cvFolds
 
   itsI <- results <- NULL
 
-  if (sets@strat) {  # stratified sampling
+  if (!userSplit & sets@strat) {  # stratified sampling
     respVals <- resp(ds@formula,ds@data)
     regrProb <- is.numeric(respVals)
     if (regrProb) {  # regression problem
@@ -193,20 +199,24 @@ crossValidation <- function(sys,ds,sets,itsInfo=F) {
   for(r in 1:sets@cvReps) {
     cat('Repetition ',r,'\nFold:')
 
-    set.seed(sets@cvSeed*r)
-    permutation <- sample(n)
-    perm.data <- ds@data[permutation,]
+    if (!userSplit) {
+      set.seed(sets@cvSeed*r)
+      permutation <- sample(n)
+      perm.data <- ds@data[permutation,]
+    } else perm.data <- ds@data
 
     for(i in seq(sets@cvFolds)) {
       cat(' ',i)
 
-      if (sets@strat) {
-        out.fold <- c()
-        for(x in seq(along=levels(b))) 
-          if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[((i-1)*bct[x]+1):((i-1)*bct[x]+bct[x])])
-      } else {
-        out.fold <- ((i-1)*n.each.part+1):(i*n.each.part)
-      }
+      if (!userSplit) {
+        if (sets@strat) {
+          out.fold <- c()
+          for(x in seq(along=levels(b))) 
+            if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[((i-1)*bct[x]+1):((i-1)*bct[x]+bct[x])])
+        } else {
+          out.fold <- ((i-1)*n.each.part+1):(i*n.each.part)
+        }
+      } else out.fold <- outFold(sets@dataSplits,i,r)
 
       it.res <- runLearner(sys,
                            ds@formula,
@@ -261,12 +271,15 @@ holdOut <- function(sys,ds,sets,itsInfo=F) {
 
   show(sets)
 
+  ## Did the user supplied the data splits for all folds and repetitions?
+  userSplit <- all(dim(sets@dataSplits) != 0)
+
   n <- nrow(ds@data)
-  n.test <- as.integer(n * sets@hldSz)
+  if (!userSplit) n.test <- as.integer(n * sets@hldSz)
 
   itsI <- results <- NULL
   
-  if (sets@strat) {  # stratified sampling
+  if (!userSplit & sets@strat) {  # stratified sampling
     respVals <- resp(ds@formula,ds@data)
     regrProb <- is.numeric(respVals)
     if (regrProb) {  # regression problem
@@ -294,17 +307,21 @@ holdOut <- function(sys,ds,sets,itsInfo=F) {
   for(r in 1:sets@hldReps) {
     cat('Repetition ',r)
 
-    set.seed(sets@hldSeed*r)
-    permutation <- sample(n)
-    perm.data <- ds@data[permutation,]
+    if (!userSplit) {
+      set.seed(sets@hldSeed*r)
+      permutation <- sample(n)
+      perm.data <- ds@data[permutation,]
+    } else perm.data <- ds@data
 
-    if (sets@strat) {
-      out.fold <- c()
-      for(x in seq(along=levels(b))) 
-        if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[1:bct[x]])
-    } else {
-      out.fold <- 1:n.test
-    }
+    if (!userSplit) {
+      if (sets@strat) {
+        out.fold <- c()
+        for(x in seq(along=levels(b))) 
+          if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[1:bct[x]])
+      } else {
+        out.fold <- 1:n.test
+      }
+    } else out.fold <- outFold(sets@dataSplits,1,r)
 
     it.res <- runLearner(sys,
                          ds@formula,
@@ -415,6 +432,9 @@ bootstrap <- function(sys,ds,sets,itsInfo=F,verbose=T) {
 
   show(sets)
 
+  ## Did the user supplied the data splits for all folds and repetitions?
+  userSplit <- all(dim(sets@dataSplits) != 0)
+
   n <- nrow(ds@data)
 
   itsI <- results <- NULL
@@ -423,8 +443,10 @@ bootstrap <- function(sys,ds,sets,itsInfo=F,verbose=T) {
   for(r in 1:sets@bootReps) {
     if (verbose) cat(' ',r)
 
-    set.seed(sets@bootSeed*r)
-    idx <- sample(n,n,replace=T)
+    if (!userSplit) {
+      set.seed(sets@bootSeed*r)
+      idx <- sample(n,n,replace=T)
+    } else idx <- (1:n)[-outFold(sets@dataSplits,1,r)]
     
     it.res <- runLearner(sys,
                          ds@formula,
@@ -855,27 +877,87 @@ getSummaryResults <- function(results,learner,dataSet) {
 # ex1 <- variants('cv.rpartXse',se=c(0,0.5,1))
 # ex2 <- variants('nnet')
 #
-variants <- function(sys,varsRootName=sys,...) {
-  nvars <- length(vars <- list(...))
+variants <- function(sys,varsRootName=sys,as.is=NULL,...) {
+  default.novar <- c('evaluator.pars.stats','evaluator.pars.allCls')
+  allnovar <- c(as.is,default.novar)
 
-  if (nvars == 0) {
-    l <- list(learner(sys,list()))
-    names(l) <- paste(sys,'.defaults',sep='')
-    return(l)
+  ## unfolding the parameters hidden inside the special parameters
+
+  #spec <- c('learner.pars','predictor.pars','evaluator.pars')
+  vars <- list(...)
+  if (!length(vars)) {
+    vars <- c(learner(sys,list()))
+    names(vars)[1] <- paste(varsRootName,'.v1',sep='')
+    return(vars)
   }
-  vs <- list()
-  nvarsEach <- lapply(vars,length)
+  
+  ## the special parameters that are list and thus need to be unfolded
+  islist <- sapply(vars,function(v) is.list(v))
+  spec <- names(vars)[islist]
+  
+  newVars <- list()
+  for(i in 1:length(vars))
+    if (names(vars)[i] %in% spec)
+      newVars <- c(newVars,unlist(vars[i],recursive=F))
+    else
+      newVars <- c(newVars,vars[i])
+  vars <- newVars
+
+  ## the parameters not involved in variants generation
+  ## their names:
+  allnovar <- c(allnovar,names(vars)[which(sapply(vars,length)==1)])
+  ## their positions in vars:
+  toExcl <- which(names(vars) %in% allnovar)
+  ## their number:
+  nExcl <- length(toExcl)
+  
+  ## checking how many variants per parameter and generate the grid
+  nvarsEach <- rep(1,length(vars))
+  varying <- if (nExcl) (1:length(vars))[-toExcl] else 1:length(vars)
+  if (length(varying)) nvarsEach[varying] <- sapply(vars[varying],length)
   idxsEach <- lapply(nvarsEach,function(x) 1:x)
   theVars <- expand.grid(idxsEach)
+
+  ## now go for generating the different variants
   vs <- list()
   for(i in 1:nrow(theVars)) {
+    ## start
     varPars <- list()
-    for(k in 1:ncol(theVars))
-      varPars <- c(varPars,vars[[k]][theVars[i,k]])
-    names(varPars) <- names(vars)
-    vs <- c(vs,learner(sys,varPars))
+    for(k in 1:ncol(theVars)) {
+      if (nExcl & (k %in% toExcl))
+        varPars <- c(varPars,vars[k])
+      else {
+        x <- vars[k]
+        x[[1]] <- x[[1]][theVars[i,k]]
+        varPars <- c(varPars,x)
+      }
+    }
+    specParsPos <- grep(paste(paste('^',spec,'[:.:]',sep=''),collapse='|'),
+                        names(varPars))
+    normal <- 1:length(varPars)
+    if (length(specParsPos)) normal <- normal[-specParsPos]
+    normalPars <- if (length(normal)) varPars[normal] else NULL
+    
+    finalVars <- list()
+    for(i in 1:length(spec)) {
+      pos <- grep(paste('^',spec[i],'[:.:]',sep=''),names(varPars))
+      if (length(pos)) {
+        x <- list()
+        for(j in pos) {
+          x <- c(x,list(varPars[[j]]))
+          names(x)[length(x)] <- gsub(paste('^',spec[i],'[:.:]',sep=''),'',names(varPars)[j])
+        }
+        finalVars <- c(finalVars,list(x))
+        names(finalVars)[length(finalVars)] <- spec[i]
+      }
+    }
+    finalVars <- c(finalVars,normalPars)
+    vs <- c(vs,learner(sys,finalVars))
   }
-  names(vs) <- paste(varsRootName,'.v',1:nrow(theVars),sep='')
+  
+  for(i in 1:length(vs))
+    names(vs)[i] <- if (sys=='standardWF') paste(vs[[i]]@pars$learner,'.v',i,sep='') else paste(varsRootName,'.v',i,sep='')
+
   vs
 }
 
@@ -917,11 +999,99 @@ runLearner <- function(l,...) {
 
 
 
+#################################################################
+## Some standard work-flow functions for experimental comparisons
+#################################################################
+
+
+## =====================================================================
+## A function implementing a typical workflow for predictive tasks.
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+standardWF <- function(form,train,test,
+                       learner,learner.pars=NULL,
+                       predictor='predict',predictor.pars=NULL,
+                       evaluator=if (is.factor(resp(form,train))) 'class.eval' else 'regr.eval',
+                       evaluator.pars=NULL,
+                       .outPreds=F)
+{
+
+  if (is.null(predictor)) {
+    ps <- do.call(learner,c(list(form,train,test),learner.pars))
+  } else {
+    m <- do.call(learner,c(list(form,train),learner.pars))
+    ps <- do.call(predictor,c(list(m,test),predictor.pars))
+  }
+
+  if (is.null(evaluator)) {
+    eval.res <- rep(1,nrow(test))
+  } else {
+    if (evaluator=='class.eval')
+      eval.res <- do.call(evaluator,c(list(resp(form,test),ps),evaluator.pars))
+    else
+      eval.res <- do.call(evaluator,c(list(resp(form,test),ps),c(evaluator.pars,list(train.y=if (any(c('nmse','nmae') %in% evaluator.pars$stats)) resp(form,train) else NULL))))
+  }
+  
+  if (.outPreds) structure(eval.res,itInfo=list(preds=ps,trues=resp(form,test)))
+  else eval.res
+}
+ 
+  
+
+
+
+## =====================================================================
+## The workhorse function implementing sliding and growing window worflows
+## for time series prediction tasks
+## ---------------------------------------------------------------------
+## L. Torgo (Jan, 2013)
+##
+timeseriesWF <- function(form,train,test,
+                         learner,learner.pars=NULL,
+                         type='slide',relearn.step=1,
+                         predictor='predict',predictor.pars=NULL,
+                         evaluator=if (is.factor(resp(form,train))) 'class.eval' else 'ts.eval',
+                         evaluator.pars=NULL,
+                         verbose=T)
+{
+   
+  data <- rbind(train,test)
+  n <- NROW(data)
+  train.size <- NROW(train)
+  sts <- seq(train.size+1,n,by=relearn.step)
+
+  preds <- vector()
+  for(s in sts) {
+
+    tr <- if (type=='slide') data[(s-train.size):(s-1),] else data[1:(s-1),]
+    ts <- data[s:min((s+relearn.step-1),n),]
+    
+    if (verbose) cat('*')
+
+    if (is.null(predictor)) {
+      ps <- do.call(learner,c(list(form,tr,ts),learner.pars))
+    } else {
+      m <- do.call(learner,c(list(form,tr),learner.pars))
+      ps <- do.call(predictor,c(list(m,ts),predictor.pars))
+    }
+
+    preds <- c(preds,ps)
+  }
+  if (verbose) cat('\n')
+cat(length(preds),'\t',length(resp(form,test)),'\n')
+  do.call(evaluator,c(list(resp(form,test),preds),c(evaluator.pars,list(train.y=if (any(c('nmse','nmae') %in% evaluator.pars$stats)) resp(form,train) else NULL))))
+}
+
+
+
+
+
+
 
 #################################################################
-# General Stuff
+## Functions calculating evaluation metrics
 #################################################################
-
 
 
 # =====================================================================
@@ -961,7 +1131,7 @@ regr.eval <- function(trues,preds,
 # s <- class.eval(tr,ps,benMtrx=matrix(c(2,-13,-4,5),2,2))
 #
 class.eval <- function(trues,preds,
-                       stats=if (is.null(benMtrx)) c('acc','err') else c('acc','err','totU'),
+                       stats=if (is.null(benMtrx)) c('err') else c('err','totU'),
                        benMtrx=NULL,
                        allCls=levels(factor(trues)))
 
@@ -1001,237 +1171,20 @@ ts.eval <- function(trues,preds,
                     stats=if (is.null(train.y)) c('mae','mse','rmse','mape') else c('mae','mse','rmse','mape','nmse','nmae','theil'),
                     train.y=NULL)
 {
+  print(stats)
+  cat(length(trues),'\t',length(preds),'\n')
   r <- if (!is.null(train.y))  c(regr.eval(trues,preds,setdiff(stats,'theil'),train.y),theil=sum((trues-preds)^2)/sum((c(train.y[length(train.y)],trues[-length(trues)])-preds)^2)) else regr.eval(trues,preds,setdiff(stats,'theil'),train.y)
   return(r[stats])
 }
 
 
 
+
+
 #################################################################
-## Some simple work-flow functions for experimental comparisons
-## using some common algorithms for both classification and
-## regression tasks
+# General Stuff
 #################################################################
 
-
-#######################
-## Regression workflows
-
-.RegrStats <- c('mae','mse')  # the default evaluation metrics for regression
-.Regr <- list(rpartXse     = 'DMwR', 
-              svm          = 'e1071',
-              ksvm         = 'kernlab',
-              lm           = 'stats',
-              earth        = 'earth',
-              randomForest = 'randomForest',
-              bagging      = 'ipred',
-              gbm          = 'gbm',
-              nnet         = 'nnet'
-             )
-
-
-
-## =====================================================================
-## A function implementing a typical workflow for regression working
-## with different learners
-## ---------------------------------------------------------------------
-## L. Torgo (Dec, 2012)
-##
-regrWF <- function(form,train,test,learner,eval=.RegrStats,simpl=F,...) {
-  do.call('require',list(.Regr[[learner]],quietly=T))
-  
-  args <- list(...)
-  if (learner == 'lm') {
-    s.args <- which(names(args) %in% names(formals('step')))
-    if (length(s.args)) {
-      step.args <- args[s.args]
-      args <- args[-s.args]
-    }
-    m <- do.call(learner,c(list(form,train),args))
-    if (simpl) m <- if (length(s.args)) do.call('step',c(list(m,trace=0),step.args)) else step(m,trace=0)
-  } else  if (learner == 'nnet') {
-    if (!hasArg(linout)) m <- do.call(learner,c(list(form,train,linout=T),args))
-    else m <- do.call(learner,c(list(form,train),args))
-  } else  if (learner == 'gbm') {
-    if (!hasArg(distribution)) m <- do.call(learner,c(list(form,distribution='gaussian',data=train,verbose=F),args))
-    else m <- do.call(learner,c(list(form,data=train,verbose=F),args))
-  } else  m <- do.call(learner,c(list(form,train),args))
-
-  p <- if (learner == 'gbm')  predict(m,test,n.trees=m$n.trees) else predict(m,test)
-
-  regr.eval(resp(form,test),p,stats=eval,train.y=if(any(c('nmse','nmae') %in% eval)) resp(form,train) else NULL)
-}
-
-
-## =====================================================================
-## A function implementing a typical workflow for regression approaches
-## to time series forecasting using sliding window working  with different
-## learners
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-slideRegrWF <- function(...) tsRegrWF(type='slide',...)
-
-## =====================================================================
-## A function implementing a typical workflow for regression approaches
-## to time series forecasting using growing window working  with different
-## learners
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-growRegrWF <- function(...) tsRegrWF(type='grow',...)
-
-
-## =====================================================================
-## The workhorse function implementing sliding and growing window worflows
-## for regression techniques
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-tsRegrWF <- function(form,train,test,type,learner,eval=.RegrStats,simpl=F,relearn.step=1,verbose=T,...) {
-  do.call('require',list(.Regr[[learner]],quietly=T))
-  
-  args <- list(...)
-  data <- rbind(train,test)
-  n <- NROW(data)
-  train.size <- NROW(train)
-  sts <- seq(train.size+1,n,by=relearn.step)
-
-  preds <- vector()
-  for(s in sts) {
-
-    tr <- if (type=='slide') data[(s-train.size):(s-1),] else data[1:(s-1),]
-    ts <- data[s:min((s+relearn.step-1),n),]
-    
-    if (verbose) cat('*')
-
-    if (learner == 'lm') {
-      s.args <- which(names(args) %in% names(formals('step')))
-      if (length(s.args)) {
-        step.args <- args[s.args]
-        args <- args[-s.args]
-      }
-      m <- do.call(learner,c(list(form,tr),args))
-      if (simpl) m <- if (length(s.args)) do.call('step',c(list(m,trace=0),step.args)) else step(m,trace=0)
-    } else  if (learner == 'nnet') {
-      if (!hasArg(linout)) m <- do.call(learner,c(list(form,tr,linout=T),args))
-      else m <- do.call(learner,c(list(form,tr),args))
-    } else  if (learner == 'gbm') {
-      if (!hasArg(distribution)) m <- do.call(learner,c(list(form,distribution='gaussian',data=tr,verbose=F),args))
-      else m <- do.call(learner,c(list(form,data=tr,verbose=F),args))
-    } else  m <- do.call(learner,c(list(form,tr),args))
-
-    ps <- if (learner == 'gbm')  predict(m,ts,n.trees=m$n.trees) else predict(m,ts)
-
-    preds <- c(preds,ps)
-  }
-  if (verbose) cat('\n')
-    
-  regr.eval(resp(form,test),preds,stats=eval,train.y=if(any(c('nmse','nmae') %in% eval)) resp(form,train) else NULL)
-}
-
-
-###########################
-## Classification workflows
-
-.ClassStats <- c('err')  # the default evaluation metrics for classification
-.Class <- list(rpartXse     = 'DMwR', 
-               svm          = 'e1071',
-               ksvm         = 'kernlab',
-               lda          = 'MASS',
-               naiveBayes   = 'e1071',
-               kNN          = 'DMwR',
-               randomForest = 'randomForest',
-               bagging      = 'adabag',
-               boosting     = 'adabag',
-               C5.0         = 'C50',
-               nnet         = 'nnet'
-               )
-
-
-## =====================================================================
-## A function implementing a typical workflow for classification working
-## with different learners
-## ---------------------------------------------------------------------
-## L. Torgo (Dec, 2012)
-##
-classWF <- function(form,train,test,learner,eval=.ClassStats,...) {
-  do.call('require',list(.Class[[learner]],quietly=T))
-  
-  args <- list(...)
-  eval.args <- which(names(args) %in% names(formals(class.eval)))
-  learner.args <- if (length(eval.args)) args[-eval.args] else args
-
-  if (learner != 'kNN') {
-    
-    m <- do.call(learner,c(list(form,train),learner.args)) 
-  
-    p <- if (learner %in% c('rpartXse','nnet')) predict(m,test,type='class') else if (learner %in% c('lda','bagging','boosting')) predict(m,test)$class else predict(m,test)
-    
-  } else p <- do.call(learner,c(list(form,train,test),learner.args))
-  
-  do.call('class.eval',c(list(resp(form,test),p,stats=eval),args[eval.args]))
-}
-
-
-## =====================================================================
-## A function implementing a typical workflow for classification approaches
-## to time series forecasting using sliding window, working  with different
-## learners
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-slideClassWF <- function(...) tsClassWF(type='slide',...)
-
-## =====================================================================
-## A function implementing a typical workflow for regression approaches
-## to time series forecasting using growing window working  with different
-## learners
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-growClassWF <- function(...) tsClassWF(type='grow',...)
-
-
-## =====================================================================
-## The workhorse function implementing sliding and growing window worflows
-## for classification techniques
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-tsClassWF <- function(form,train,test,type,learner,eval=.ClassStats,relearn.step=1,verbose=T,...) {
-  do.call('require',list(.Class[[learner]],quietly=T))
-  
-  args <- list(...)
-  eval.args <- which(names(args) %in% names(formals(class.eval)))
-  learner.args <- if (length(eval.args)) args[-eval.args] else args
-
-  data <- rbind(train,test)
-  n <- NROW(data)
-  train.size <- NROW(train)
-  sts <- seq(train.size+1,n,by=relearn.step)
-
-  preds <- factor(rep('',NROW(test)),levels=levels(resp(form,data)))
-
-  for(s in sts) {
-
-    tr <- if (type=='slide') data[(s-train.size):(s-1),] else data[1:(s-1),]
-    ts <- data[s:min((s+relearn.step-1),n),]
-    
-    if (verbose) cat('*')
-    
-    if (learner != 'kNN') {
-      
-      m <- do.call(learner,c(list(form,tr),learner.args)) 
-      
-      ps <- if (learner %in% c('rpartXse','nnet')) predict(m,ts,type='class') else if (learner %in% c('lda','boosting')) predict(m,ts)$class else predict(m,ts)
-      
-    } else ps <- do.call(learner,c(list(form,tr,ts),learner.args))
-
-    preds[(s-sts[1]+1):(s-sts[1]+length(ps))] <- ps
-  }
-  if (verbose) cat('\n')
-
-  do.call('class.eval',c(list(resp(form,test),preds,stats=eval),args[eval.args]))
-}
+outFold <- function(ds,f,r)
+  unlist(subset(ds,ds[,1] == "TEST" & ds[,3]==f & ds[,4]==r,colnames(ds)[2]))
 

@@ -20,6 +20,12 @@
     \item{\code{bootReps}:}{Object of class \code{"numeric"} indicating
       the number of repetitions of the bootstrap experiment (defaulting
       to 50). }
+    \item{\code{dataSplits}:}{Object of class \code{"data.frame"}
+      containing the data splits to use on each repetition of a
+      bootstrap experiment (defaulting to \code{NULL}). This data frame
+      should have 4 columns: the first contains values TRAIN or TEST;
+      the second numbers of rows in the orginal data; the third numbers
+      of folds; and the fourth numbers of repetitions. }
   }
 }
 \section{Extends}{

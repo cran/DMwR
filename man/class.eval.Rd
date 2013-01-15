@@ -11,8 +11,7 @@ and the other with the predicted target variable values.
 }
 \usage{
 class.eval(trues, preds,
-          stats=if (is.null(benMtrx)) c('acc','err')
-                else c('acc','err','totU'),
+          stats=if (is.null(benMtrx)) c('err') else c('err','totU'),
           benMtrx=NULL,
           allCls=levels(factor(trues)))
 }

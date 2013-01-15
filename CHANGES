@@ -1,3 +1,11 @@
+VERSION 0.3.1 (2013-03-20)
+
+- Function variants as a new parameter (as.is) that accepts a vector of parameter names that are untouchable. This is useful for parameters that accept as values vectors, and that we do not want the function to interprete these values of different trials of the parameter.
+- Added a new slot to classes cvSettings, hldSettings, bootSettings and mcSettings. This new slot, named dataSplits, allows for the user to provide the data splits to use on each repetition of an experimental comparison instead of relying on the internal random data split generation (that is still the default).
+- Added a new function (timeseriesWF) that unifies the concepts of functions slideRegrWF, growRegrWF, tsRegrWF, slideClassWF, growClassWF and tsClassWF, which are now defunct.
+- Added a new function (standardWF)  that unifies the concepts of functions classWF and regrWF, which are now defunct.
+- Added a new function (ts.eval) that provides a series of evaluation metrics for time series forecasting models.
+
 VERSION 0.3.0 (2013-01-15)
 
 - Fixed problem with stratification in holdOut and crossValidation functions, occurying particularly on some regression problems, due to some empty buckets
