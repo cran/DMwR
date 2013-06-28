@@ -70,7 +70,7 @@
 #       cvSettings(3,10,1234)
 #                   )
 #
-experimentalComparison <- function(datasets,systems,setts) {
+experimentalComparison <- function(datasets,systems,setts,...) {
   require(abind,quietly=T)
 
   if (!is(datasets,'list')) datasets <- list(datasets)
@@ -114,9 +114,9 @@ experimentalComparison <- function(datasets,systems,setts) {
                       loocvSettings='loocv'
                       ),
 #               if(is(setts,'cvSettings')) 'crossValidation' else 'monteCarlo',
-               list(systems[[s]],
+               c(list(systems[[s]],
                     datasets[[d]],
-                    setts)
+                    setts),...)
                          )
       
       rr <- abind(rr,var.res@foldResults,along=3)
@@ -162,15 +162,12 @@ crossValidation <- function(sys,ds,sets,itsInfo=F) {
 
   show(sets)
 
-  ## Did the user supplied the data splits for all folds and repetitions?
-  userSplit <- all(dim(sets@dataSplits) != 0)
-  
   n <- nrow(ds@data)
-  if (!userSplit) n.each.part <- n %/% sets@cvFolds
+  n.each.part <- n %/% sets@cvFolds
 
   itsI <- results <- NULL
 
-  if (!userSplit & sets@strat) {  # stratified sampling
+  if (sets@strat) {  # stratified sampling
     respVals <- resp(ds@formula,ds@data)
     regrProb <- is.numeric(respVals)
     if (regrProb) {  # regression problem
@@ -199,24 +196,20 @@ crossValidation <- function(sys,ds,sets,itsInfo=F) {
   for(r in 1:sets@cvReps) {
     cat('Repetition ',r,'\nFold:')
 
-    if (!userSplit) {
-      set.seed(sets@cvSeed*r)
-      permutation <- sample(n)
-      perm.data <- ds@data[permutation,]
-    } else perm.data <- ds@data
+    set.seed(sets@cvSeed*r)
+    permutation <- sample(n)
+    perm.data <- ds@data[permutation,]
 
     for(i in seq(sets@cvFolds)) {
       cat(' ',i)
-
-      if (!userSplit) {
-        if (sets@strat) {
+      
+      if (sets@strat) {
           out.fold <- c()
           for(x in seq(along=levels(b))) 
-            if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[((i-1)*bct[x]+1):((i-1)*bct[x]+bct[x])])
-        } else {
+              if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[((i-1)*bct[x]+1):((i-1)*bct[x]+bct[x])])
+      } else {
           out.fold <- ((i-1)*n.each.part+1):(i*n.each.part)
-        }
-      } else out.fold <- outFold(sets@dataSplits,i,r)
+      }
 
       it.res <- runLearner(sys,
                            ds@formula,
@@ -271,15 +264,12 @@ holdOut <- function(sys,ds,sets,itsInfo=F) {
 
   show(sets)
 
-  ## Did the user supplied the data splits for all folds and repetitions?
-  userSplit <- all(dim(sets@dataSplits) != 0)
-
   n <- nrow(ds@data)
-  if (!userSplit) n.test <- as.integer(n * sets@hldSz)
+  n.test <- as.integer(n * sets@hldSz)
 
   itsI <- results <- NULL
   
-  if (!userSplit & sets@strat) {  # stratified sampling
+  if (sets@strat) {  # stratified sampling
     respVals <- resp(ds@formula,ds@data)
     regrProb <- is.numeric(respVals)
     if (regrProb) {  # regression problem
@@ -307,21 +297,17 @@ holdOut <- function(sys,ds,sets,itsInfo=F) {
   for(r in 1:sets@hldReps) {
     cat('Repetition ',r)
 
-    if (!userSplit) {
-      set.seed(sets@hldSeed*r)
-      permutation <- sample(n)
-      perm.data <- ds@data[permutation,]
-    } else perm.data <- ds@data
+    set.seed(sets@hldSeed*r)
+    permutation <- sample(n)
+    perm.data <- ds@data[permutation,]
 
-    if (!userSplit) {
-      if (sets@strat) {
+    if (sets@strat) {
         out.fold <- c()
         for(x in seq(along=levels(b))) 
-          if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[1:bct[x]])
-      } else {
+            if (bct[x]) out.fold <- c(out.fold,which(b == levels(b)[x])[1:bct[x]])
+    } else {
         out.fold <- 1:n.test
-      }
-    } else out.fold <- outFold(sets@dataSplits,1,r)
+    }
 
     it.res <- runLearner(sys,
                          ds@formula,
@@ -432,9 +418,6 @@ bootstrap <- function(sys,ds,sets,itsInfo=F,verbose=T) {
 
   show(sets)
 
-  ## Did the user supplied the data splits for all folds and repetitions?
-  userSplit <- all(dim(sets@dataSplits) != 0)
-
   n <- nrow(ds@data)
 
   itsI <- results <- NULL
@@ -443,10 +426,8 @@ bootstrap <- function(sys,ds,sets,itsInfo=F,verbose=T) {
   for(r in 1:sets@bootReps) {
     if (verbose) cat(' ',r)
 
-    if (!userSplit) {
-      set.seed(sets@bootSeed*r)
-      idx <- sample(n,n,replace=T)
-    } else idx <- (1:n)[-outFold(sets@dataSplits,1,r)]
+    set.seed(sets@bootSeed*r)
+    idx <- sample(n,n,replace=T)
     
     it.res <- runLearner(sys,
                          ds@formula,
@@ -878,87 +859,84 @@ getSummaryResults <- function(results,learner,dataSet) {
 # ex2 <- variants('nnet')
 #
 variants <- function(sys,varsRootName=sys,as.is=NULL,...) {
-  default.novar <- c('evaluator.pars.stats','evaluator.pars.allCls')
-  allnovar <- c(as.is,default.novar)
 
-  ## unfolding the parameters hidden inside the special parameters
+    allnovar <- as.is
 
-  #spec <- c('learner.pars','predictor.pars','evaluator.pars')
-  vars <- list(...)
-  if (!length(vars)) {
-    vars <- c(learner(sys,list()))
-    names(vars)[1] <- paste(varsRootName,'.v1',sep='')
-    return(vars)
-  }
-  
-  ## the special parameters that are list and thus need to be unfolded
-  islist <- sapply(vars,function(v) is.list(v))
-  spec <- names(vars)[islist]
-  
-  newVars <- list()
-  for(i in 1:length(vars))
-    if (names(vars)[i] %in% spec)
-      newVars <- c(newVars,unlist(vars[i],recursive=F))
-    else
-      newVars <- c(newVars,vars[i])
-  vars <- newVars
-
-  ## the parameters not involved in variants generation
-  ## their names:
-  allnovar <- c(allnovar,names(vars)[which(sapply(vars,length)==1)])
-  ## their positions in vars:
-  toExcl <- which(names(vars) %in% allnovar)
-  ## their number:
-  nExcl <- length(toExcl)
-  
-  ## checking how many variants per parameter and generate the grid
-  nvarsEach <- rep(1,length(vars))
-  varying <- if (nExcl) (1:length(vars))[-toExcl] else 1:length(vars)
-  if (length(varying)) nvarsEach[varying] <- sapply(vars[varying],length)
-  idxsEach <- lapply(nvarsEach,function(x) 1:x)
-  theVars <- expand.grid(idxsEach)
-
-  ## now go for generating the different variants
-  vs <- list()
-  for(i in 1:nrow(theVars)) {
-    ## start
-    varPars <- list()
-    for(k in 1:ncol(theVars)) {
-      if (nExcl & (k %in% toExcl))
-        varPars <- c(varPars,vars[k])
-      else {
-        x <- vars[k]
-        x[[1]] <- x[[1]][theVars[i,k]]
-        varPars <- c(varPars,x)
-      }
+    vars <- list(...)
+    if (!length(vars)) {
+        vars <- c(learner(sys,list()))
+        names(vars)[1] <- paste(varsRootName,'.v1',sep='')
+        return(vars)
     }
-    specParsPos <- grep(paste(paste('^',spec,'[:.:]',sep=''),collapse='|'),
-                        names(varPars))
-    normal <- 1:length(varPars)
-    if (length(specParsPos)) normal <- normal[-specParsPos]
-    normalPars <- if (length(normal)) varPars[normal] else NULL
+  
+    ## the special parameters that are list and thus need to be unfolded
+    islist <- sapply(vars,function(v) is.list(v))
+    spec <- names(vars)[islist]
     
-    finalVars <- list()
-    for(i in 1:length(spec)) {
-      pos <- grep(paste('^',spec[i],'[:.:]',sep=''),names(varPars))
-      if (length(pos)) {
-        x <- list()
-        for(j in pos) {
-          x <- c(x,list(varPars[[j]]))
-          names(x)[length(x)] <- gsub(paste('^',spec[i],'[:.:]',sep=''),'',names(varPars)[j])
-        }
-        finalVars <- c(finalVars,list(x))
-        names(finalVars)[length(finalVars)] <- spec[i]
-      }
-    }
-    finalVars <- c(finalVars,normalPars)
-    vs <- c(vs,learner(sys,finalVars))
-  }
-  
-  for(i in 1:length(vs))
-    names(vs)[i] <- if (sys=='standardWF') paste(vs[[i]]@pars$learner,'.v',i,sep='') else paste(varsRootName,'.v',i,sep='')
+    newVars <- list()
+    for(i in 1:length(vars))
+        if (names(vars)[i] %in% spec)
+            newVars <- c(newVars,unlist(vars[i],recursive=F))
+        else
+            newVars <- c(newVars,vars[i])
+    vars <- newVars
 
-  vs
+    ## the parameters not involved in variants generation
+    ## their names:
+    allnovar <- c(allnovar,names(vars)[which(sapply(vars,length)==1)])
+    ## their positions in vars:
+    toExcl <- which(names(vars) %in% allnovar)
+    ## their number:
+    nExcl <- length(toExcl)
+    
+    ## checking how many variants per parameter and generate the grid
+    nvarsEach <- rep(1,length(vars))
+    varying <- if (nExcl) (1:length(vars))[-toExcl] else 1:length(vars)
+    if (length(varying)) nvarsEach[varying] <- sapply(vars[varying],length)
+    idxsEach <- lapply(nvarsEach,function(x) 1:x)
+    theVars <- expand.grid(idxsEach)
+    
+    ## now go for generating the different variants
+    vs <- list()
+    for(i in 1:nrow(theVars)) {
+        ## start
+        varPars <- list()
+        for(k in 1:ncol(theVars)) {
+            if (nExcl & (k %in% toExcl))
+                varPars <- c(varPars,vars[k])
+            else {
+                x <- vars[k]
+                x[[1]] <- x[[1]][theVars[i,k]]
+                varPars <- c(varPars,x)
+            }
+        }
+        specParsPos <- grep(paste(paste('^',spec,'[:.:]',sep=''),collapse='|'),
+                            names(varPars))
+        normal <- 1:length(varPars)
+        if (length(specParsPos)) normal <- normal[-specParsPos]
+        normalPars <- if (length(normal)) varPars[normal] else NULL
+        
+        finalVars <- list()
+        for(i in 1:length(spec)) {
+            pos <- grep(paste('^',spec[i],'[:.:]',sep=''),names(varPars))
+            if (length(pos)) {
+                x <- list()
+                for(j in pos) {
+                    x <- c(x,list(varPars[[j]]))
+                    names(x)[length(x)] <- gsub(paste('^',spec[i],'[:.:]',sep=''),'',names(varPars)[j])
+                }
+                finalVars <- c(finalVars,list(x))
+                names(finalVars)[length(finalVars)] <- spec[i]
+            }
+        }
+        finalVars <- c(finalVars,normalPars)
+        vs <- c(vs,learner(sys,finalVars))
+    }
+    
+    for(i in 1:length(vs))
+        names(vs)[i] <- paste(varsRootName,'.v',i,sep='')
+    
+    vs
 }
 
 
@@ -999,63 +977,17 @@ runLearner <- function(l,...) {
 
 
 
+
+
+
 #################################################################
-## Some standard work-flow functions for experimental comparisons
+# Sliding and Growing Windows Approaches to Learn+Test a Model
 #################################################################
 
+slidingWindowTest <- function(learner,
+                               form,train,test,
+                               relearn.step=1,verbose=T) {
 
-## =====================================================================
-## A function implementing a typical workflow for predictive tasks.
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-standardWF <- function(form,train,test,
-                       learner,learner.pars=NULL,
-                       predictor='predict',predictor.pars=NULL,
-                       evaluator=if (is.factor(resp(form,train))) 'class.eval' else 'regr.eval',
-                       evaluator.pars=NULL,
-                       .outPreds=F)
-{
-
-  if (is.null(predictor)) {
-    ps <- do.call(learner,c(list(form,train,test),learner.pars))
-  } else {
-    m <- do.call(learner,c(list(form,train),learner.pars))
-    ps <- do.call(predictor,c(list(m,test),predictor.pars))
-  }
-
-  if (is.null(evaluator)) {
-    eval.res <- rep(1,nrow(test))
-  } else {
-    if (evaluator=='class.eval')
-      eval.res <- do.call(evaluator,c(list(resp(form,test),ps),evaluator.pars))
-    else
-      eval.res <- do.call(evaluator,c(list(resp(form,test),ps),c(evaluator.pars,list(train.y=if (any(c('nmse','nmae') %in% evaluator.pars$stats)) resp(form,train) else NULL))))
-  }
-  
-  if (.outPreds) structure(eval.res,itInfo=list(preds=ps,trues=resp(form,test)))
-  else eval.res
-}
- 
-  
-
-
-
-## =====================================================================
-## The workhorse function implementing sliding and growing window worflows
-## for time series prediction tasks
-## ---------------------------------------------------------------------
-## L. Torgo (Jan, 2013)
-##
-timeseriesWF <- function(form,train,test,
-                         learner,learner.pars=NULL,
-                         type='slide',relearn.step=1,
-                         predictor='predict',predictor.pars=NULL,
-                         evaluator=if (is.factor(resp(form,train))) 'class.eval' else 'ts.eval',
-                         evaluator.pars=NULL,
-                         verbose=T)
-{
-   
   data <- rbind(train,test)
   n <- NROW(data)
   train.size <- NROW(train)
@@ -1064,27 +996,51 @@ timeseriesWF <- function(form,train,test,
   preds <- vector()
   for(s in sts) {
 
-    tr <- if (type=='slide') data[(s-train.size):(s-1),] else data[1:(s-1),]
-    ts <- data[s:min((s+relearn.step-1),n),]
-    
     if (verbose) cat('*')
 
-    if (is.null(predictor)) {
-      ps <- do.call(learner,c(list(form,tr,ts),learner.pars))
-    } else {
-      m <- do.call(learner,c(list(form,tr),learner.pars))
-      ps <- do.call(predictor,c(list(m,ts),predictor.pars))
-    }
+    ps <- runLearner(learner,
+                     form=form,
+                     train=data[(s-train.size):(s-1),],
+                     test=data[s:min((s+relearn.step-1),n),]
+                     )
 
     preds <- c(preds,ps)
   }
+
+  
   if (verbose) cat('\n')
-cat(length(preds),'\t',length(resp(form,test)),'\n')
-  do.call(evaluator,c(list(resp(form,test),preds),c(evaluator.pars,list(train.y=if (any(c('nmse','nmae') %in% evaluator.pars$stats)) resp(form,train) else NULL))))
+  if (is.factor(resp(form,train))) return(factor(preds,levels=1:3,labels=levels(resp(form,train)))) else return(preds)
 }
 
 
+growingWindowTest <- function(learner,
+                               form,train,test,
+                               relearn.step=1,verbose=T) {
 
+  data <- rbind(train,test)
+  n <- NROW(data)
+  train.size <- NROW(train)
+  sts <- seq(train.size+1,n,by=relearn.step)
+
+  preds <- vector()
+  for(s in sts) {
+
+    if (verbose) cat('*')
+
+    ps <- runLearner(learner,
+                     form=form,
+                     train=data[1:(s-1),],
+                     test=data[s:min((s+relearn.step-1),n),]
+                     )
+
+    preds <- c(preds,ps)
+  }
+
+  
+  if (verbose) cat('\n')
+  if (is.factor(resp(form,train))) return(factor(preds,levels=1:3,labels=levels(resp(form,train)))) else return(preds)
+
+}
 
 
 
@@ -1179,12 +1135,4 @@ ts.eval <- function(trues,preds,
 
 
 
-
-
-#################################################################
-# General Stuff
-#################################################################
-
-outFold <- function(ds,f,r)
-  unlist(subset(ds,ds[,1] == "TEST" & ds[,3]==f & ds[,4]==r,colnames(ds)[2]))
 

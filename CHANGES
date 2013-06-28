@@ -1,3 +1,10 @@
+VERSION 0.4.0 (2013-06-28)
+
+- Functions implementing work flows that were introduced in versions 0.3.0 and 0.3.1, were eliminated to avoid incompatibilities with the code in the book, which should be the aim of this package. In this context, all the new functionality introduced in branch 0.3 is now removed, and will be included in a new package specifically devoted to the experimental comparison of predictive models that does not need to be backward compatible with the code in the book.
+- Functions slidingWindowTest() and growingWindowTest() were re-introduced into the package.
+- Functions timeseriesWF() and standardWF() were removed.
+- experimentalComparison function now accepts further arguments that are passed on to the lower level functions (e.g. crossvalidation, holdOut, etc.)
+
 VERSION 0.3.1 (2013-03-20)
 
 - Function variants as a new parameter (as.is) that accepts a vector of parameter names that are untouchable. This is useful for parameters that accept as values vectors, and that we do not want the function to interprete these values of different trials of the parameter.

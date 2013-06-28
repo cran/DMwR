@@ -13,7 +13,7 @@ methodologies, namely: cross validation, leave one out cross validation,
 hold-out, monte carlo simulations and bootstrap.
 }
 \usage{
-experimentalComparison(datasets, systems, setts)
+experimentalComparison(datasets, systems, setts, ...)
 }
 
 \arguments{
@@ -31,6 +31,10 @@ This is an object belonging to any of the sub-classes of the virtual
   class \code{expSettings}. It is the class of this object that
   determines the type of experimental comparison that will be carried
   out. See section Details for the possible values.
+}
+\item{\dots}{
+Other parameter settings that are to be passed to the functions actually
+  carrying out the experiments (e.g. \code{crossValidation}, etc.).
 }
 }
 \details{

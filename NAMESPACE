@@ -35,7 +35,7 @@ export(
        holdOut,
        loocv,
        bootstrap,
-       standardWF,timeseriesWF,
+#       standardWF,timeseriesWF,
 #       regrWF,classWF,
 #       slideRegrWF,growRegrWF,tsRegrWF,
 #       slideClassWF,growClassWF,tsClassWF,
@@ -43,7 +43,7 @@ export(
        bestScores, rankSystems, statScores,
        getFoldsResults,getSummaryResults,
        variants, getVariant,
-#       slidingWindowTest, growingWindowTest,
+       slidingWindowTest, growingWindowTest,
        join,
        dsNames, learnerNames, statNames,
        
