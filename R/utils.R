@@ -41,7 +41,7 @@ resp <- function(formula,data) model.response(model.frame(formula, data))
 # Luis Torgo, Mar 2009, Mar 2011
 # =====================================================
 manyNAs <- function(data,nORp=0.2) {
-  if (nORp < 1) n <- as.integer(nORp*ncol(data))
+  n <- if (nORp < 1) as.integer(nORp*ncol(data)) else round(nORp,0)
   idxs <- which(apply(data,1,function(x) sum(is.na(x))) > n)
   if (!length(idxs)) warning('Empty index generated, no rows with many NAs. Undesirable effects may be caused if indexing a data frame with this.')
   idxs

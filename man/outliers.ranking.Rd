@@ -178,9 +178,10 @@ o <- outliers.ranking(algae)
 ## contains columns (the first 3) that are factors and the dist() function
 ## assumes all numeric data.
 ## We can solve the problem by calculating the distance matrix "outside"
-## using the daisy() function that handles mixed-mode data.
-dm <- daisy(algae)
-o <- outliers.ranking(dm)
+## using the daisy() function that handles mixed-mode data, as show in
+## the code below that requires the R package "cluster" to be available
+## dm <- daisy(algae)
+## o <- outliers.ranking(dm)
 
 ## Now let us check the outlier ranking factors ordered by decreasing
 ## score of outlyingness

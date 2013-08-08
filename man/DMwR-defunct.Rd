@@ -16,24 +16,21 @@
 }
 \usage{
 
-classWF(form,train,test,learner,eval=.ClassStats,...)
+classWF(form,train,test,learner,eval,...)
 
-regrWFn(form,train,test,learner,
-        eval=.RegrStats,simpl=FALSE,...)
+regrWF(form,train,test,learner,eval,simpl,...)
 
 slideRegrWF(...)
 
 growRegrWF(...)
 
-tsRegrWF(form,train,test,type,learner,eval=.RegrStats,
-         simpl=FALSE,relearn.step=1,verbose=TRUE,...)
+tsRegrWF(form,train,test,type,learner,eval,simpl,relearn.step,verbose,...)
 
 slideClassWF(...)
 
 growClassWF(...)
 
-tsClassWF(form,train,test,type,learner,eval=.ClassStats,
-          relearn.step=1,verbose=TRUE,...)
+tsClassWF(form,train,test,type,learner,eval,relearn.step,verbose,...)
 }
 \seealso{
   \code{\link{Deprecated}}, \code{\link{Defunct}}

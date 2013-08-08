@@ -28,7 +28,7 @@ outliers.ranking <- function(data,test.data=NULL,
 
 
 
-  require(cluster)
+  ##require(cluster)
   
 
   # -------- Check the type of task

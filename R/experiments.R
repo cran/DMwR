@@ -71,7 +71,7 @@
 #                   )
 #
 experimentalComparison <- function(datasets,systems,setts,...) {
-  require(abind,quietly=T)
+  ##require(abind,quietly=T)
 
   if (!is(datasets,'list')) datasets <- list(datasets)
   if (!is(systems,'list')) systems <- list(systems)
@@ -561,7 +561,7 @@ join <- function(...,by='datasets') {
     if (!identical(s[[i]]@settings,s[[1]]@settings))
       stop('join:: trying to join experimental comparisons with different settings!')
 
-  require(abind)
+  ##require(abind)
   if (!is.numeric(by))
     by <- match(by,c('iterations','statistics','variants','datasets'))
 
@@ -860,8 +860,6 @@ getSummaryResults <- function(results,learner,dataSet) {
 #
 variants <- function(sys,varsRootName=sys,as.is=NULL,...) {
 
-    allnovar <- as.is
-
     vars <- list(...)
     if (!length(vars)) {
         vars <- c(learner(sys,list()))
@@ -869,21 +867,9 @@ variants <- function(sys,varsRootName=sys,as.is=NULL,...) {
         return(vars)
     }
   
-    ## the special parameters that are list and thus need to be unfolded
-    islist <- sapply(vars,function(v) is.list(v))
-    spec <- names(vars)[islist]
-    
-    newVars <- list()
-    for(i in 1:length(vars))
-        if (names(vars)[i] %in% spec)
-            newVars <- c(newVars,unlist(vars[i],recursive=F))
-        else
-            newVars <- c(newVars,vars[i])
-    vars <- newVars
-
     ## the parameters not involved in variants generation
     ## their names:
-    allnovar <- c(allnovar,names(vars)[which(sapply(vars,length)==1)])
+    allnovar <- c(as.is,names(vars)[which(sapply(vars,length)==1)])
     ## their positions in vars:
     toExcl <- which(names(vars) %in% allnovar)
     ## their number:
@@ -892,7 +878,7 @@ variants <- function(sys,varsRootName=sys,as.is=NULL,...) {
     ## checking how many variants per parameter and generate the grid
     nvarsEach <- rep(1,length(vars))
     varying <- if (nExcl) (1:length(vars))[-toExcl] else 1:length(vars)
-    if (length(varying)) nvarsEach[varying] <- sapply(vars[varying],length)
+    if (length(varying)) nvarsEach[varying] <- lapply(vars[varying],length)
     idxsEach <- lapply(nvarsEach,function(x) 1:x)
     theVars <- expand.grid(idxsEach)
     
@@ -902,40 +888,13 @@ variants <- function(sys,varsRootName=sys,as.is=NULL,...) {
         ## start
         varPars <- list()
         for(k in 1:ncol(theVars)) {
-            if (nExcl & (k %in% toExcl))
-                varPars <- c(varPars,vars[k])
-            else {
-                x <- vars[k]
-                x[[1]] <- x[[1]][theVars[i,k]]
-                varPars <- c(varPars,x)
-            }
+            if (nExcl & (k %in% toExcl)) varPars <- c(varPars,vars[k])
+            else varPars <- c(varPars,vars[[k]][theVars[i,k]])
         }
-        specParsPos <- grep(paste(paste('^',spec,'[:.:]',sep=''),collapse='|'),
-                            names(varPars))
-        normal <- 1:length(varPars)
-        if (length(specParsPos)) normal <- normal[-specParsPos]
-        normalPars <- if (length(normal)) varPars[normal] else NULL
-        
-        finalVars <- list()
-        for(i in 1:length(spec)) {
-            pos <- grep(paste('^',spec[i],'[:.:]',sep=''),names(varPars))
-            if (length(pos)) {
-                x <- list()
-                for(j in pos) {
-                    x <- c(x,list(varPars[[j]]))
-                    names(x)[length(x)] <- gsub(paste('^',spec[i],'[:.:]',sep=''),'',names(varPars)[j])
-                }
-                finalVars <- c(finalVars,list(x))
-                names(finalVars)[length(finalVars)] <- spec[i]
-            }
-        }
-        finalVars <- c(finalVars,normalPars)
-        vs <- c(vs,learner(sys,finalVars))
+        names(varPars) <- names(vars)
+        vs <- c(vs,learner(sys,varPars))
     }
-    
-    for(i in 1:length(vs))
-        names(vs)[i] <- paste(varsRootName,'.v',i,sep='')
-    
+    names(vs) <- paste(varsRootName,'.v',1:nrow(theVars),sep='')
     vs
 }
 

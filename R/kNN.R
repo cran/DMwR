@@ -8,7 +8,7 @@
 # Mar 2010, Luis Torgo
 # -----------------------------------------------------------------
 kNN <- function(form,train,test,norm=T,norm.stats=NULL,...) {
-  require(class,quietly=TRUE)
+  ##require(class,quietly=TRUE)
   tgtCol <- which(colnames(train)==as.character(form[[2]]))
   if (norm) {
     if (is.null(norm.stats)) tmp <- scale(train[,-tgtCol],center=T,scale=T)

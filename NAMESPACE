@@ -1,10 +1,13 @@
-#import(graphics)
-#import(abind)  # commented out as it does not have a name space
-import(rpart)
-import(xts)
-import(quantmod)
-importFrom(zoo,as.zoo)
-import(methods)
+importFrom(abind,abind) 
+##import(rpart)
+importFrom(rpart,rpart,prune.rpart)
+##import(xts)
+importFrom(xts,as.xts,xts)
+##import(quantmod)
+importFrom(quantmod,newTA,Delt,candleChart)
+importFrom(zoo,as.zoo,zoo,coredata,index)
+importFrom(class,knn)
+import(ROCR)
 
 
 

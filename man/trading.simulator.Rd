@@ -141,6 +141,8 @@ the ID of the position that is being closed, if applicable.
 ## losses  to l\%.
 ## - if the end of the day signal is buy the strategy is more or less
 ## the inverse
+\dontrun{
+library(xts)
 policy.1 <- function(signals,market,opened.pos,money,
                      bet=0.2,hold.time=10,
                      exp.prof=0.025, max.loss= 0.05
@@ -225,7 +227,7 @@ policy.1 <- function(signals,market,opened.pos,money,
   ## a few stats on the trading performance
   summary(tradeR)
   tradingEvaluation(tradeR)
-
+}
   ## See the performance graphically
   \dontrun{
     plot(tradeR,market)

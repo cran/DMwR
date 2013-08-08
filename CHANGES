@@ -1,4 +1,10 @@
-VERSION 0.4.0 (2013-06-28)
+VERSION 0.4.1 (2013-08-8)
+
+- Corrected a bug on the manyNAs() function which was not working when the second argument as an integer, as it should.
+- The function SMOTE() was changed to remove its dependency on the target variable being the last column. Now it works as expected also if the target column is not the last column.
+- Small changes in function variants() to correct a bug introduced since version 0.3.1 of the package.
+
+VERSION 0.4.0 (2013-06-27)
 
 - Functions implementing work flows that were introduced in versions 0.3.0 and 0.3.1, were eliminated to avoid incompatibilities with the code in the book, which should be the aim of this package. In this context, all the new functionality introduced in branch 0.3 is now removed, and will be included in a new package specifically devoted to the experimental comparison of predictive models that does not need to be backward compatible with the code in the book.
 - Functions slidingWindowTest() and growingWindowTest() were re-introduced into the package.

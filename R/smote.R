@@ -44,8 +44,17 @@ SMOTE <- function(form,data,
   minExs <- which(data[,tgt] == minCl)
 
   # generate synthetic cases from these minExs
-  newExs <- smote.exs(data[minExs,],tgt,perc.over,k)
-
+  if (tgt < ncol(data)) {
+      cols <- 1:ncol(data)
+      cols[c(tgt,ncol(data))] <- cols[c(ncol(data),tgt)]
+      data <-  data[,cols]
+  }
+  newExs <- smote.exs(data[minExs,],ncol(data),perc.over,k)
+  if (tgt < ncol(data)) {
+      newExs <- newExs[,cols]
+      data <- data[,cols]
+  }
+  
   # get the undersample of the "majority class" examples
   selMaj <- sample((1:NROW(data))[-minExs],
                    as.integer((perc.under/100)*nrow(newExs)),
@@ -58,7 +67,6 @@ SMOTE <- function(form,data,
   if (is.null(learner)) return(newdataset)
   else do.call(learner,list(form,newdataset,...))
 }
-
 
 
 

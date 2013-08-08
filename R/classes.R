@@ -810,8 +810,8 @@ compExp <- function(l,t,s,r) {
 # Methods:
 
 plot.compExp <- function(x,y,stats=dimnames(x@foldResults)[[2]],...) {
-  require(lattice)
-  require(grid)
+  ##require(lattice)
+  ##require(grid)
   
   # Function that transforms a 4-dimension array into a data frame
   # it's similar to reshape() goals but I was unable to use the latter...

@@ -70,7 +70,7 @@ results <- experimentalComparison(
                c(dataset(Infant.Mortality ~ ., swiss),
                  dataset(mpg ~ ., mtcars)),
                c(variants('cv.rpartXse',se=c(0,0.5,1))),
-               cvSettings(3,10,1234)
+               cvSettings(1,10,1234)
                                  )
 ## get the top 3 best performing systems
 rankSystems(results,top=2)
